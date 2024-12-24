@@ -425,7 +425,7 @@ function MakeWindow(Configs)
       Size = UDim2.new(0.35, 0, 0.3, 0),
       Position = UDim2.new(0.1, 0, 0.5, 0),
       BackgroundColor3 = Configs_HUB.Cor_Hub,
-      Text = "اغلاق السكربت",
+      Text = "Close",
       Font = Configs_HUB.Text_Font,
       TextColor3 = Color3.fromRGB(240, 0, 0),
       TextSize = 20
@@ -436,7 +436,7 @@ function MakeWindow(Configs)
       Position = UDim2.new(0.9, 0, 0.5, 0),
       AnchorPoint = Vector2.new(1, 0),
       BackgroundColor3 = Configs_HUB.Cor_Hub,
-      Text = "الغاء",
+      Text = "Cancel",
       Font = Configs_HUB.Text_Font,
       TextColor3 = Color3.fromRGB(0, 240, 0),
       TextSize = 20
