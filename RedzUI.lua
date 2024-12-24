@@ -413,7 +413,7 @@ function MakeWindow(Configs)
     
     local Mensage = Create("TextLabel", CloseMenu, {
       Size = UDim2.new(0.8, 0, 0.25, 0),
-      Text = "هل انت متأكد انك تريد اغلاقه ؟",
+      Text = "are you sure you want to close this script?",
       Position = UDim2.new(0.1, 0, 0.2),
       TextColor3 = Configs_HUB.Cor_Text,
       Font = Configs_HUB.Text_Font,
