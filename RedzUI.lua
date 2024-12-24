@@ -272,7 +272,7 @@ function MakeWindow(Configs)
       Size = UDim2.new(1, -70, 0, 40),
       Position = UDim2.new(0, 35, 0, 90),
       BackgroundColor3 = Configs_HUB.Cor_Options,
-      PlaceholderText = "اكتبه هناا",
+      PlaceholderText = "Put the Key here",
       Text = "",
       TextColor3 = Configs_HUB.Cor_Text,
       Font = Configs_HUB.Text_Font,
