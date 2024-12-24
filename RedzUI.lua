@@ -1,7 +1,7 @@
 local Configs_HUB = {
   Cor_Hub = Color3.fromRGB(15, 15, 15),
   Cor_Options = Color3.fromRGB(15, 15, 15),
-  Cor_Stroke = Color3.fromRGB(255, 105, 180),
+  Cor_Stroke = Color3.fromRGB(222, 18, 18),
   Cor_Text = Color3.fromRGB(240, 240, 240),
   Cor_DarkText = Color3.fromRGB(240, 240, 240),
   Corner_Radius = UDim.new(0,4),
@@ -259,7 +259,7 @@ function MakeWindow(Configs)
     })Corner(ConfirmButton)
     
     local GetKeyLink = Create("TextButton", KeyMenu, {
-      Text = "Get Key",
+      Text = "Get Key Link",
       Font = Configs_HUB.Text_Font,
       TextSize = 20,
       TextColor3 = Configs_HUB.Cor_Text,
