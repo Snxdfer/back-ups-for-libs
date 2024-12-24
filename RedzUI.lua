@@ -1425,7 +1425,7 @@ function MakeWindow(Configs)
   end
   
   function AddTextLabel(parent, Configs)
-    local LabelName = Configs[1] or Configs.Name or "Text Label!!"
+    local LabelName = Configs[1] or Configs.Name
     
     local Frame = Create("Frame", parent, {
       Size = UDim2.new(1, 0, 0, 25),
