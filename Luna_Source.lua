@@ -1519,7 +1519,7 @@ local IconModule = {
 }
 
 local IconModule = {
-	Lucide2 = nil,
+	Lucide = nil,
 	Material = {
 		["lucide-accessibility"] = "rbxassetid://10709751939",
 		["lucide-activity"] = "rbxassetid://10709752035",
