@@ -1605,10 +1605,17 @@ local function UnpackColor(Color)
 end
 
 function tween(object, goal, callback, tweenin)
+
     local tweenInfo = tweenin or TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
-    local tween = TweenService:Create(object, tweenInfo, goal)
-    tween.Completed:Connect(callback or function() end)
-    tween:Play()
+    
+    if object:IsA("Frame") or object:IsA("TextLabel") or object:IsA("ImageLabel") or object:IsA("TextButton") or object:IsA("ImageButton") then
+
+        local tween = TweenService:Create(object, tweenInfo, goal)
+
+        tween.Completed:Connect(callback or function() end)
+
+        tween:Play()
+    end
 end
 
 local function BlurModule(Frame)
@@ -2303,6 +2310,8 @@ function Luna:CreateWindow(WindowSettings)
 
 -- Assuming LunaUI and required modules like TweenService are properly initialized
 
+-- Assuming LunaUI, TweenService, and KeySystem are properly initialized
+
 LunaUI.Enabled = true
 BlurModule(Main)
 
@@ -2417,6 +2426,7 @@ if WindowSettings.KeySystem then
                 -- Tween all key system elements for fade-out effect
                 for _, instance in pairs(KeySystem:GetDescendants()) do
                     if instance.ClassName ~= "UICorner" and instance.ClassName ~= "UIPadding" then
+                        -- Apply tweens only to valid visual objects
                         if instance.ClassName ~= "UIStroke" then
                             tween(instance, {BackgroundTransparency = 1}, nil, TweenInfo.new(0.6, Enum.EasingStyle.Exponential))
                         end
