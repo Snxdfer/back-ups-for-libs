@@ -1605,7 +1605,7 @@ local function UnpackColor(Color)
 end
 
 function tween(object, goal, callback, tweenin)
-    local tweenInfo = tweenin or TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tweenInfo = tweenin or TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     if object and object:IsA("GuiObject") then
         local tween = TweenService:Create(object, tweenInfo, goal)
         tween.Completed:Connect(callback or function() end)
