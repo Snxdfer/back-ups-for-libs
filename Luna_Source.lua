@@ -1606,6 +1606,7 @@ end
 
 function tween(object, goal, callback, tweenin)
     local tweenInfo = tweenin or TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+    if object:IsA("Frame") or object:IsA("TextLabel") or object:IsA("ImageLabel") or object:IsA("TextButton") or object:IsA("ImageButton") then
         local tween = TweenService:Create(object, tweenInfo, goal)
         tween.Completed:Connect(callback or function() end)
         tween:Play()
