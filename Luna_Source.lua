@@ -1604,10 +1604,8 @@ local function UnpackColor(Color)
 	return Color3.fromRGB(Color.R, Color.G, Color.B)
 end
 
-local TweenService = game:GetService("TweenService") -- Ensure TweenService is properly referenced
-
 function tween(object, goal, callback, tweenin)
-    local tweenInfo = tweenin or TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tweenInfo = tweenin or TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     if object and object:IsA("GuiObject") then
         local tween = TweenService:Create(object, tweenInfo, goal)
         tween.Completed:Connect(callback or function() end)
