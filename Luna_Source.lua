@@ -1605,9 +1605,11 @@ local function UnpackColor(Color)
 end
 
 function tween(object, goal, callback, tweenin)
-	local tween = TweenService:Create(object,tweenin or tweeninfo, goal)
-	tween.Completed:Connect(callback or function() end)
-	tween:Play()
+    local tweenInfo = tweenin or TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(object, tweenInfo, goal)
+        tween.Completed:Connect(callback or function() end)
+        tween:Play()
+    end
 end
 
 local function BlurModule(Frame)
