@@ -1605,9 +1605,10 @@ local function UnpackColor(Color)
 end
 
 function tween(object, goal, callback, tweenin)
-	local tween = TweenService:Create(object,tweenin or tweeninfo, goal)
-	tween.Completed:Connect(callback or function() end)
-	tween:Play()
+    local tweenInfo = tweenin or TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+    local tween = TweenService:Create(object, tweenInfo, goal)
+    tween.Completed:Connect(callback or function() end)
+    tween:Play()
 end
 
 local function BlurModule(Frame)
@@ -2389,7 +2390,7 @@ function Luna:CreateWindow(WindowSettings)
 					for _, instance in pairs(KeySystem:GetDescendants()) do
 						if instance.ClassName ~= "UICorner" and instance.ClassName ~= "UIPadding" then
 							if instance.ClassName ~= "UIStroke" then
-								tween(instance, {BackgroundTransparency = 1}, nil,TweenInfo.new(0.6, Enum.EasingStyle.Exponential))
+								tween(instance, {BackgroundTransparency = 1}, nil, TweenInfo.new(0.6, Enum.EasingStyle.Exponential))
 							end
 							if instance.ClassName == "ImageButton" then
 								tween(instance, {ImageTransparency = 1}, nil,TweenInfo.new(0.5, Enum.EasingStyle.Exponential))
