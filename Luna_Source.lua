@@ -2489,7 +2489,7 @@ if WindowSettings.LoadingEnabled then
     task.wait(0.29)
     TweenService:Create(LoadingFrame.Frame.ImageLabel, TweenInfo.new(1.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 2, false, 0.2), {Rotation = 450}):Play()
 
-    task.wait(0.3)
+    task.wait(3.32)
 
     -- Fade out the loading screen
     TweenService:Create(LoadingFrame.Frame.Frame.Title, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
