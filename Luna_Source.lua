@@ -2301,162 +2301,195 @@ function Luna:CreateWindow(WindowSettings)
 	-- 	LoadAutoLoad(WindowSettings.ConfigSettings.ConfigFolder, WindowSettings.ConfigSettings.RootFolder)
 	-- end)
 
-	LunaUI.Enabled = true
+-- Assuming LunaUI and required modules like TweenService are properly initialized
 
-	BlurModule(Main)
+LunaUI.Enabled = true
+BlurModule(Main)
 
-	if WindowSettings.KeySystem then
-		local KeySettings = WindowSettings.KeySettings
-		
-		Draggable(Dragger, Main)
-		Draggable(LunaUI.MobileSupport, LunaUI.MobileSupport)
-		if dragBar then Draggable(dragInteract, Main, true, 255) end
+-- Initialize Passthrough variable
+local Passthrough = false
 
-		if not WindowSettings.KeySettings then
-			Passthrough = true
-			return
-		end
-		
-		WindowSettings.KeySettings.FileName = "key"
+-- Check if Key System is enabled
+if WindowSettings.KeySystem then
+    local KeySettings = WindowSettings.KeySettings
 
-		if typeof(WindowSettings.KeySettings.Key) == "string" then WindowSettings.KeySettings.Key = {WindowSettings.KeySettings.Key} end
+    -- Enable draggable functionality
+    Draggable(Dragger, Main)
+    Draggable(LunaUI.MobileSupport, LunaUI.MobileSupport)
+    
+    -- Optionally make 'dragInteract' draggable if 'dragBar' exists
+    if dragBar then 
+        Draggable(dragInteract, Main, true, 255)
+    end
 
-		local direc = WindowSettings.KeySettings.SaveInRoot and "Luna/Configurations/" .. WindowSettings.ConfigSettings.RootFolder .. "/" .. WindowSettings.ConfigSettings.ConfigFolder .. "/Key System/" or "Luna/Configurations/" ..  WindowSettings.ConfigSettings.ConfigFolder .. "/Key System/"
+    -- Exit early if KeySettings is not defined
+    if not KeySettings then
+        Passthrough = true
+        return
+    end
 
-		if isfile and isfile(direc .. WindowSettings.KeySettings.FileName .. ".luna") then
-			for i, Key in ipairs(WindowSettings.KeySettings.Key) do
-				if string.find(readfile(direc .. WindowSettings.KeySettings.FileName .. ".luna"), Key) then
-					Passthrough = true
-					break
-				end
-			end
-		end
+    -- Set the filename for the key
+    KeySettings.FileName = "key"
 
-		if not Passthrough then
+    -- Ensure Key is an array
+    if typeof(KeySettings.Key) == "string" then
+        KeySettings.Key = {KeySettings.Key}
+    end
 
-			local Btn = KeySystem.Action.Copy
-			local typesys = KeySettings.SecondAction.Type
-			
-			if typesys == "Discord" then
-				Btn = KeySystem.Action.Discord
-			end
+    -- Build directory path based on WindowSettings
+    local direc
+    if KeySettings.SaveInRoot then
+        direc = "Luna/Configurations/" .. WindowSettings.ConfigSettings.RootFolder .. "/" .. WindowSettings.ConfigSettings.ConfigFolder .. "/Key System/"
+    else
+        direc = "Luna/Configurations/" .. WindowSettings.ConfigSettings.ConfigFolder .. "/Key System/"
+    end
 
-			local AttemptsRemaining = math.random(2, 5)
+    -- Check if the key file exists and validate against provided keys
+    if isfile and isfile(direc .. KeySettings.FileName .. ".luna") then
+        for _, Key in ipairs(KeySettings.Key) do
+            if string.find(readfile(direc .. KeySettings.FileName .. ".luna"), Key) then
+                Passthrough = true
+                break
+            end
+        end
+    end
 
-			KeySystem.Visible = true
-			KeySystem.Title.Text = WindowSettings.KeySettings.Title
-			KeySystem.Subtitle.Text = WindowSettings.KeySettings.Subtitle
-			KeySystem.textshit.Text = WindowSettings.KeySettings.Note
+    -- If not passed, display the key system and handle key input
+    if not Passthrough then
+        local Btn = KeySystem.Action.Copy
+        local typesys = KeySettings.SecondAction.Type
+        if typesys == "Discord" then
+            Btn = KeySystem.Action.Discord
+        end
 
-			if KeySettings.SecondAction.Enabled == true then
-				Btn.Visible = true
-			end
-			
-			Btn.Interact.MouseButton1Click:Connect(function()
-				if typesys == "Discord" then
-					setclipboard(tostring("https://discord.gg/"..KeySettings.SecondAction.Parameter)) -- Hunter if you see this I added copy also was too lazy to send u msg
-					if request then
-						request({
-							Url = 'http://127.0.0.1:6463/rpc?v=1',
-							Method = 'POST',
-							Headers = {
-								['Content-Type'] = 'application/json',
-								Origin = 'https://discord.com'
-							},
-							Body = HttpService:JSONEncode({
-								cmd = 'INVITE_BROWSER',
-								nonce = HttpService:GenerateGUID(false),
-								args = {code = KeySettings.SecondAction.Parameter}
-							})
-						})
-					end
-				else
-					setclipboard(tostring(KeySettings.SecondAction.Parameter))
-				end
-			end)
+        local AttemptsRemaining = math.random(2, 5)
 
-			KeySystem.Action.Submit.Interact.MouseButton1Click:Connect(function()
-				if #KeySystem.Input.InputBox.Text == 0 then return end
-				local KeyFound = false
-				local FoundKey = ''
-				for _, Key in ipairs(WindowSettings.KeySettings.Key) do
-					if KeySystem.Input.InputBox.Text == Key then
-						KeyFound = true
-						FoundKey = Key
-						break
-					end
-				end
-				if KeyFound then 
-					for _, instance in pairs(KeySystem:GetDescendants()) do
-						if instance.ClassName ~= "UICorner" and instance.ClassName ~= "UIPadding" then
-							if instance.ClassName ~= "UIStroke" then
-								tween(instance, {BackgroundTransparency = 1}, nil, TweenInfo.new(0.6, Enum.EasingStyle.Exponential))
-							end
-							if instance.ClassName == "ImageButton" then
-								tween(instance, {ImageTransparency = 1}, nil,TweenInfo.new(0.5, Enum.EasingStyle.Exponential))
-							end
-							if instance.ClassName == "TextLabel" then
-								tween(instance, {TextTransparency = 1}, nil,TweenInfo.new(0.4, Enum.EasingStyle.Exponential))
-							end
-							if instance.ClassName == "UIStroke" then
-								tween(instance, {Transparency = 1}, nil,TweenInfo.new(0.5, Enum.EasingStyle.Exponential))
-							end
-						end
-					end
-					tween(KeySystem, {BackgroundTransparency = 1}, nil,TweenInfo.new(0.6, Enum.EasingStyle.Exponential))
-					task.wait(0.51)
-					Passthrough = true
-					KeySystem.Visible = false
-					if WindowSettings.KeySettings.SaveKey then
-						if writefile then
-							writefile(direc .. WindowSettings.KeySettings.FileName .. ".luna", FoundKey)
-						end
-						Luna:Notification({Title = "Key System", Content = "The key for this script has been saved successfully.", Icon = "lock_open"})
-					end
-				else
-					if AttemptsRemaining == 0 then
+        -- Show key system UI elements
+        KeySystem.Visible = true
+        KeySystem.Title.Text = KeySettings.Title
+        KeySystem.Subtitle.Text = KeySettings.Subtitle
+        KeySystem.textshit.Text = KeySettings.Note
 
-						game.Players.LocalPlayer:Kick("No Attempts Remaining")
-						game:Shutdown()
-					end
-					KeySystem.Input.InputBox.Text = "Incorrect Key"
-					AttemptsRemaining = AttemptsRemaining - 1
-					task.wait(0.4)
-					KeySystem.Input.InputBox.Text = ""
-				end
-			end)
+        -- Show second action button if enabled
+        if KeySettings.SecondAction.Enabled then
+            Btn.Visible = true
+        end
+        
+        -- Copy Discord invite link if the action is "Discord"
+        Btn.Interact.MouseButton1Click:Connect(function()
+            if typesys == "Discord" then
+                setclipboard("https://discord.gg/" .. KeySettings.SecondAction.Parameter)
+                if request then
+                    request({
+                        Url = 'http://127.0.0.1:6463/rpc?v=1',
+                        Method = 'POST',
+                        Headers = {
+                            ['Content-Type'] = 'application/json',
+                            Origin = 'https://discord.com'
+                        },
+                        Body = HttpService:JSONEncode({
+                            cmd = 'INVITE_BROWSER',
+                            nonce = HttpService:GenerateGUID(false),
+                            args = {code = KeySettings.SecondAction.Parameter}
+                        })
+                    })
+                end
+            else
+                setclipboard(KeySettings.SecondAction.Parameter)
+            end
+        end)
 
-			KeySystem.Close.MouseButton1Click:Connect(function()
-				
-				Luna:Destroy()
-			end)
-		end
-	end
+        -- Submit the key input from the user
+        KeySystem.Action.Submit.Interact.MouseButton1Click:Connect(function()
+            if #KeySystem.Input.InputBox.Text == 0 then return end
+            
+            local KeyFound = false
+            local FoundKey = ''
+            for _, Key in ipairs(KeySettings.Key) do
+                if KeySystem.Input.InputBox.Text == Key then
+                    KeyFound = true
+                    FoundKey = Key
+                    break
+                end
+            end
 
-	if WindowSettings.KeySystem then
-		repeat task.wait() until Passthrough
-	end
+            if KeyFound then
+                -- Tween all key system elements for fade-out effect
+                for _, instance in pairs(KeySystem:GetDescendants()) do
+                    if instance.ClassName ~= "UICorner" and instance.ClassName ~= "UIPadding" then
+                        if instance.ClassName ~= "UIStroke" then
+                            tween(instance, {BackgroundTransparency = 1}, nil, TweenInfo.new(0.6, Enum.EasingStyle.Exponential))
+                        end
+                        if instance.ClassName == "ImageButton" then
+                            tween(instance, {ImageTransparency = 1}, nil, TweenInfo.new(0.5, Enum.EasingStyle.Exponential))
+                        end
+                        if instance.ClassName == "TextLabel" then
+                            tween(instance, {TextTransparency = 1}, nil, TweenInfo.new(0.4, Enum.EasingStyle.Exponential))
+                        end
+                        if instance.ClassName == "UIStroke" then
+                            tween(instance, {Transparency = 1}, nil, TweenInfo.new(0.5, Enum.EasingStyle.Exponential))
+                        end
+                    end
+                end
 
-	if WindowSettings.LoadingEnabled then
-		task.wait(0.3)
-		TweenService:Create(LoadingFrame.Frame.Frame.Title, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
-		TweenService:Create(LoadingFrame.Frame.ImageLabel, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 0}):Play()
-		task.wait(0.05)
-		TweenService:Create(LoadingFrame.Frame.Frame.Subtitle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
-		TweenService:Create(LoadingFrame.Version, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
-		task.wait(0.29)
-		TweenService:Create(LoadingFrame.Frame.ImageLabel, TweenInfo.new(1.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 2, false, 0.2), {Rotation = 450}):Play()
+                -- Fade out the KeySystem and close it
+                tween(KeySystem, {BackgroundTransparency = 1}, nil, TweenInfo.new(0.6, Enum.EasingStyle.Exponential))
+                task.wait(0.51)
+                Passthrough = true
+                KeySystem.Visible = false
 
-		task.wait(3.32)
+                -- Save the key to a file if required
+                if KeySettings.SaveKey and writefile then
+                    writefile(direc .. KeySettings.FileName .. ".luna", FoundKey)
+                    Luna:Notification({Title = "Key System", Content = "The key for this script has been saved successfully.", Icon = "lock_open"})
+                end
+            else
+                -- Handle incorrect key input
+                if AttemptsRemaining == 0 then
+                    game.Players.LocalPlayer:Kick("No Attempts Remaining")
+                    game:Shutdown()
+                end
+                KeySystem.Input.InputBox.Text = "Incorrect Key"
+                AttemptsRemaining = AttemptsRemaining - 1
+                task.wait(0.4)
+                KeySystem.Input.InputBox.Text = ""
+            end
+        end)
 
-		TweenService:Create(LoadingFrame.Frame.Frame.Title, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
-		TweenService:Create(LoadingFrame.Frame.ImageLabel, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
-		task.wait(0.05)
-		TweenService:Create(LoadingFrame.Frame.Frame.Subtitle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
-		TweenService:Create(LoadingFrame.Version, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
-		wait(0.3)
-		TweenService:Create(LoadingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
-	end
+        -- Close the key system if the close button is clicked
+        KeySystem.Close.MouseButton1Click:Connect(function()
+            Luna:Destroy()
+        end)
+    end
+end
+
+-- Wait for passthrough before continuing
+if WindowSettings.KeySystem then
+    repeat task.wait() until Passthrough
+end
+
+-- Handle the loading screen if enabled
+if WindowSettings.LoadingEnabled then
+    task.wait(0.3)
+    TweenService:Create(LoadingFrame.Frame.Frame.Title, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+    TweenService:Create(LoadingFrame.Frame.ImageLabel, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 0}):Play()
+    task.wait(0.05)
+    TweenService:Create(LoadingFrame.Frame.Frame.Subtitle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+    TweenService:Create(LoadingFrame.Version, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+    task.wait(0.29)
+    TweenService:Create(LoadingFrame.Frame.ImageLabel, TweenInfo.new(1.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 2, false, 0.2), {Rotation = 450}):Play()
+
+    task.wait(3.32)
+
+    -- Fade out the loading screen
+    TweenService:Create(LoadingFrame.Frame.Frame.Title, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
+    TweenService:Create(LoadingFrame.Frame.ImageLabel, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+    task.wait(0.05)
+    TweenService:Create(LoadingFrame.Frame.Frame.Subtitle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
+    TweenService:Create(LoadingFrame.Version, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
+    wait(0.3)
+    TweenService:Create(LoadingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+end
 
 	TweenService:Create(Main, TweenInfo.new(0.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {BackgroundTransparency = 0.2, Size = MainSize}):Play()
 	TweenService:Create(Main.Parent.ShadowHolder, TweenInfo.new(0.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Size = MainSize}):Play()
