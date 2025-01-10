@@ -2624,7 +2624,6 @@ if WindowSettings.LoadingEnabled then
 				b.Line.BackgroundTransparency = 1
 				tween(b.Line, {BackgroundTransparency = 0})
 			end
-
 -- Button
 function Tab:CreateButton(ButtonSettings)
 
@@ -2632,7 +2631,6 @@ function Tab:CreateButton(ButtonSettings)
         Name = "Button",
         Description = nil,
         Callback = function()
-
         end,
     }, ButtonSettings or {})
 
@@ -2655,11 +2653,9 @@ function Tab:CreateButton(ButtonSettings)
     Button.Visible = true
     Button.Parent = TabPage
 
+    Button.BackgroundTransparency = 1
     Button.UIStroke.Transparency = 1
     Button.Title.TextTransparency = 1
-    if ButtonSettings.Description ~= nil and ButtonSettings.Description ~= "" then
-        Button.Desc.TextTransparency = 1
-    end
 
     TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
     TweenService:Create(Button.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
@@ -2670,47 +2666,32 @@ function Tab:CreateButton(ButtonSettings)
 
     Button.Interact["MouseButton1Click"]:Connect(function()
         -- Clicked Animation
-        local originalSize = Button.Size
-        local shrinkTween = TweenService:Create(Button, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = originalSize - UDim2.new(0, 5, 0, 5)})
-        local expandTween = TweenService:Create(Button, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = originalSize})
+        TweenService:Create(Button, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(136, 131, 163)}):Play()
+        TweenService:Create(Button.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+        task.wait(0.2)
+        TweenService:Create(Button, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
+        TweenService:Create(Button.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
 
-        shrinkTween:Play()
-        shrinkTween.Completed:Connect(function()
-            expandTween:Play()
-        end)
-
+        -- Callback Handling
         local Success, Response = pcall(ButtonSettings.Callback)
-
         if not Success then
-            TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-            TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-            TweenService:Create(Button.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+            TweenService:Create(Button, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
             Button.Title.Text = "Callback Error"
-            print("Luna Interface Suite | "..ButtonSettings.Name.." Callback Error " .. tostring(Response))
-            wait(0.5)
+            print("Luna Interface Suite | " .. ButtonSettings.Name .. " Callback Error " .. tostring(Response))
+            task.wait(0.5)
             Button.Title.Text = ButtonSettings.Name
-            TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-            TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-            TweenService:Create(Button.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
-        else
-            tween(Button.UIStroke, {Color = Color3.fromRGB(136, 131, 163)})
-            wait(0.2)
-            if ButtonV.Hover then
-                tween(Button.UIStroke, {Color = Color3.fromRGB(87, 84, 104)})
-            else
-                tween(Button.UIStroke, {Color = Color3.fromRGB(64, 61, 76)})
-            end
+            TweenService:Create(Button, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
         end
     end)
 
     Button["MouseEnter"]:Connect(function()
         ButtonV.Hover = true
-        tween(Button.UIStroke, {Color = Color3.fromRGB(87, 84, 104)})
+        TweenService:Create(Button, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.4}):Play()
     end)
 
     Button["MouseLeave"]:Connect(function()
         ButtonV.Hover = false
-        tween(Button.UIStroke, {Color = Color3.fromRGB(64, 61, 76)})
+        TweenService:Create(Button, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
     end)
 
     function ButtonV:Set(ButtonSettings2)
@@ -2737,7 +2718,6 @@ function Tab:CreateButton(ButtonSettings)
 
     return ButtonV
 end
-
 			-- Label
 			function Section:CreateLabel(LabelSettings)
 				TabPage.Position = UDim2.new(0,0,0,28)
