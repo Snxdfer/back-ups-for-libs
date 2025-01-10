@@ -2667,10 +2667,10 @@ function Tab:CreateButton(ButtonSettings)
 
     Button.Interact["MouseButton1Click"]:Connect(function()
         -- Clicked Animation
-        TweenService:Create(Button, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(136, 131, 163)}):Play()
+        TweenService:Create(Button, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(136, 131, 163)}):Play()
         TweenService:Create(Button.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
         task.wait(0.2)
-        TweenService:Create(Button, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
+        TweenService:Create(Button, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
         TweenService:Create(Button.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
 
         -- Callback Handling
