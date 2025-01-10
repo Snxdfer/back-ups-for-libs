@@ -2625,7 +2625,7 @@ if WindowSettings.LoadingEnabled then
 				tween(b.Line, {BackgroundTransparency = 0})
 			end
 
--- Button
+-- Buttonn
 function Tab:CreateButton(ButtonSettings)
 
     ButtonSettings = Kwargify({
@@ -2641,14 +2641,14 @@ function Tab:CreateButton(ButtonSettings)
     }
 
     local Button
-    if ButtonSettings.Description == nil and ButtonSettings.Description ~= "" then
+    if ButtonSettings.Description == nil or ButtonSettings.Description == "" then
         Button = Elements.Template.Button:Clone()
     else
         Button = Elements.Template.ButtonDesc:Clone()
     end
     Button.Name = ButtonSettings.Name
     Button.Title.Text = ButtonSettings.Name
-    if ButtonSettings.Description ~= nil and ButtonSettings.Description ~= "" then
+    if ButtonSettings.Description and ButtonSettings.Description ~= "" then
         Button.Desc.Text = ButtonSettings.Description
     end
     Button.Visible = true
@@ -2658,43 +2658,48 @@ function Tab:CreateButton(ButtonSettings)
     Button.UIStroke.Transparency = 1
     Button.Title.TextTransparency = 1
 
+    -- Smooth appear animation
     TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
     TweenService:Create(Button.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
     TweenService:Create(Button.Title, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
-    if ButtonSettings.Description ~= nil and ButtonSettings.Description ~= "" then
+    if ButtonSettings.Description and ButtonSettings.Description ~= "" then
         TweenService:Create(Button.Desc, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
     end
 
+    -- Clicked Animation
     Button.Interact["MouseButton1Click"]:Connect(function()
-        -- Clicked Animation
-        TweenService:Create(Button, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(136, 131, 163)}):Play()
-        TweenService:Create(Button.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
-        task.wait(0.2)
-        TweenService:Create(Button, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-        TweenService:Create(Button.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+        -- Change color smoothly on click
+        TweenService:Create(Button, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {BackgroundColor3 = Color3.fromRGB(136, 131, 163)}):Play()
+        TweenService:Create(Button.UIStroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Transparency = 0.8}):Play()
+        task.wait(0.15)
+        TweenService:Create(Button, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
+        TweenService:Create(Button.UIStroke, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {Transparency = 0.5}):Play()
 
         -- Callback Handling
         local Success, Response = pcall(ButtonSettings.Callback)
         if not Success then
-            TweenService:Create(Button, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+            -- Error Animation
+            TweenService:Create(Button, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
             Button.Title.Text = "Callback Error"
             print("Luna Interface Suite | " .. ButtonSettings.Name .. " Callback Error " .. tostring(Response))
             task.wait(0.5)
             Button.Title.Text = ButtonSettings.Name
-            TweenService:Create(Button, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
+            TweenService:Create(Button, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
         end
     end)
 
+    -- Hover Animations
     Button["MouseEnter"]:Connect(function()
         ButtonV.Hover = true
-        TweenService:Create(Button, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.4}):Play()
+        TweenService:Create(Button, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {BackgroundTransparency = 0.4}):Play()
     end)
 
     Button["MouseLeave"]:Connect(function()
         ButtonV.Hover = false
-        TweenService:Create(Button, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
+        TweenService:Create(Button, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {BackgroundTransparency = 0.5}):Play()
     end)
 
+    -- Update Button
     function ButtonV:Set(ButtonSettings2)
         ButtonSettings2 = Kwargify({
             Name = ButtonSettings.Name,
@@ -2707,11 +2712,12 @@ function Tab:CreateButton(ButtonSettings)
 
         Button.Name = ButtonSettings.Name
         Button.Title.Text = ButtonSettings.Name
-        if ButtonSettings.Description ~= nil and ButtonSettings.Description ~= "" and Button.Desc ~= nil then
+        if ButtonSettings.Description and ButtonSettings.Description ~= "" and Button.Desc then
             Button.Desc.Text = ButtonSettings.Description
         end
     end
 
+    -- Destroy Button
     function ButtonV:Destroy()
         Button.Visible = false
         Button:Destroy()
@@ -2719,6 +2725,7 @@ function Tab:CreateButton(ButtonSettings)
 
     return ButtonV
 end
+
 
 			-- Label
 			function Section:CreateLabel(LabelSettings)
@@ -4224,14 +4231,14 @@ function Tab:CreateButton(ButtonSettings)
     }
 
     local Button
-    if ButtonSettings.Description == nil and ButtonSettings.Description ~= "" then
+    if ButtonSettings.Description == nil or ButtonSettings.Description == "" then
         Button = Elements.Template.Button:Clone()
     else
         Button = Elements.Template.ButtonDesc:Clone()
     end
     Button.Name = ButtonSettings.Name
     Button.Title.Text = ButtonSettings.Name
-    if ButtonSettings.Description ~= nil and ButtonSettings.Description ~= "" then
+    if ButtonSettings.Description and ButtonSettings.Description ~= "" then
         Button.Desc.Text = ButtonSettings.Description
     end
     Button.Visible = true
@@ -4241,43 +4248,48 @@ function Tab:CreateButton(ButtonSettings)
     Button.UIStroke.Transparency = 1
     Button.Title.TextTransparency = 1
 
+    -- Smooth appear animation
     TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
     TweenService:Create(Button.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
     TweenService:Create(Button.Title, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
-    if ButtonSettings.Description ~= nil and ButtonSettings.Description ~= "" then
+    if ButtonSettings.Description and ButtonSettings.Description ~= "" then
         TweenService:Create(Button.Desc, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
     end
 
+    -- Clicked Animation
     Button.Interact["MouseButton1Click"]:Connect(function()
-        -- Clicked Animation
-        TweenService:Create(Button, TweenInfo.new(0.5, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(136, 131, 163)}):Play()
-        TweenService:Create(Button.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
-        task.wait(0.2)
-        TweenService:Create(Button, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-        TweenService:Create(Button.UIStroke, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+        -- Change color smoothly on click
+        TweenService:Create(Button, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {BackgroundColor3 = Color3.fromRGB(136, 131, 163)}):Play()
+        TweenService:Create(Button.UIStroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Transparency = 0.8}):Play()
+        task.wait(0.15)
+        TweenService:Create(Button, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
+        TweenService:Create(Button.UIStroke, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {Transparency = 0.5}):Play()
 
         -- Callback Handling
         local Success, Response = pcall(ButtonSettings.Callback)
         if not Success then
-            TweenService:Create(Button, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+            -- Error Animation
+            TweenService:Create(Button, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
             Button.Title.Text = "Callback Error"
             print("Luna Interface Suite | " .. ButtonSettings.Name .. " Callback Error " .. tostring(Response))
             task.wait(0.5)
             Button.Title.Text = ButtonSettings.Name
-            TweenService:Create(Button, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
+            TweenService:Create(Button, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
         end
     end)
 
+    -- Hover Animations
     Button["MouseEnter"]:Connect(function()
         ButtonV.Hover = true
-        TweenService:Create(Button, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.4}):Play()
+        TweenService:Create(Button, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {BackgroundTransparency = 0.4}):Play()
     end)
 
     Button["MouseLeave"]:Connect(function()
         ButtonV.Hover = false
-        TweenService:Create(Button, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
+        TweenService:Create(Button, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {BackgroundTransparency = 0.5}):Play()
     end)
 
+    -- Update Button
     function ButtonV:Set(ButtonSettings2)
         ButtonSettings2 = Kwargify({
             Name = ButtonSettings.Name,
@@ -4290,11 +4302,12 @@ function Tab:CreateButton(ButtonSettings)
 
         Button.Name = ButtonSettings.Name
         Button.Title.Text = ButtonSettings.Name
-        if ButtonSettings.Description ~= nil and ButtonSettings.Description ~= "" and Button.Desc ~= nil then
+        if ButtonSettings.Description and ButtonSettings.Description ~= "" and Button.Desc then
             Button.Desc.Text = ButtonSettings.Description
         end
     end
 
+    -- Destroy Button
     function ButtonV:Destroy()
         Button.Visible = false
         Button:Destroy()
