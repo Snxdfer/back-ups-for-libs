@@ -2625,7 +2625,7 @@ if WindowSettings.LoadingEnabled then
 				tween(b.Line, {BackgroundTransparency = 0})
 			end
 
--- button?
+-- button??
 function Tab:CreateButton(ButtonSettings)
 
     ButtonSettings = Kwargify({
@@ -2673,8 +2673,10 @@ function Tab:CreateButton(ButtonSettings)
     Button.Interact.MouseButton1Click:Connect(function()
         -- Click Animation
         TweenService:Create(Button, TweenInfo.new(0.2, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(136, 131, 163)}):Play()
+        TweenService:Create(Button.UIStroke, TweenInfo.new(0.2, Enum.EasingStyle.Exponential), {Transparency = 0.8}):Play()
         task.wait(0.2)
         TweenService:Create(Button, TweenInfo.new(0.2, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
+        TweenService:Create(Button.UIStroke, TweenInfo.new(0.2, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
 
         -- Callback Handling
         local Success, Response = pcall(ButtonSettings.Callback)
@@ -2722,6 +2724,7 @@ function Tab:CreateButton(ButtonSettings)
 
     return ButtonV
 end
+
 
 			-- Label
 			function Section:CreateLabel(LabelSettings)
