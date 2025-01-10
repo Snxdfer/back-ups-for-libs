@@ -1,9 +1,28 @@
 --[[
 
-Luna Interface Suite
-by Nebula Softworks
+[What's new?]
 
-Luna Executor | Original UI
+[~] Key System 
+         ^ [%] Fixed Key System.
+
+[~] Notification
+         ^ [+] Duration.
+
+-----------------------------------------------------
+
+[~]: Built-In
+[%]: Rewritten/Fixed/Updated
+[+]: Added
+[-]: Removed
+
+]]
+
+--[[
+
+Luna Interface Suite
+by Nebula Softworks.
+
+"Luna Executor" | Original UI.
 
 ]]
 
