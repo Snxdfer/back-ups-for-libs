@@ -3,13 +3,13 @@
 [What's new?]
 
 [~] Key System 
-         ^ [%] Fixed Key System.
+         ^ [%] Fixed Key System
 
 [~] Notification
-         ^ [+] Duration.
+         ^ [+] Duration
 
 [~] UI
-     ^ [-] Blur.
+     ^ [-] Blur
 
 -----------------------------------------------------
 
@@ -2625,7 +2625,7 @@ if WindowSettings.LoadingEnabled then
 				tween(b.Line, {BackgroundTransparency = 0})
 			end
 
--- Buttonn
+-- Button
 function Tab:CreateButton(ButtonSettings)
 
     ButtonSettings = Kwargify({
@@ -2668,14 +2668,7 @@ function Tab:CreateButton(ButtonSettings)
 
     -- Clicked Animation
     Button.Interact["MouseButton1Click"]:Connect(function()
-        -- Change color smoothly on click
-        TweenService:Create(Button, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {BackgroundColor3 = Color3.fromRGB(136, 131, 163)}):Play()
-        TweenService:Create(Button.UIStroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Transparency = 0.8}):Play()
-        task.wait(0.15)
-        TweenService:Create(Button, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-        TweenService:Create(Button.UIStroke, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {Transparency = 0.5}):Play()
-
-        -- Callback Handling
+        -- Execute callback first
         local Success, Response = pcall(ButtonSettings.Callback)
         if not Success then
             -- Error Animation
@@ -2685,6 +2678,13 @@ function Tab:CreateButton(ButtonSettings)
             task.wait(0.5)
             Button.Title.Text = ButtonSettings.Name
             TweenService:Create(Button, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
+        else
+            -- Proceed with click animation after callback execution
+            TweenService:Create(Button, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {BackgroundColor3 = Color3.fromRGB(136, 131, 163)}):Play()
+            TweenService:Create(Button.UIStroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Transparency = 0.8}):Play()
+            task.wait(0.15)
+            TweenService:Create(Button, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
+            TweenService:Create(Button.UIStroke, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {Transparency = 0.5}):Play()
         end
     end)
 
@@ -4258,14 +4258,7 @@ function Tab:CreateButton(ButtonSettings)
 
     -- Clicked Animation
     Button.Interact["MouseButton1Click"]:Connect(function()
-        -- Change color smoothly on click
-        TweenService:Create(Button, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {BackgroundColor3 = Color3.fromRGB(136, 131, 163)}):Play()
-        TweenService:Create(Button.UIStroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Transparency = 0.8}):Play()
-        task.wait(0.15)
-        TweenService:Create(Button, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-        TweenService:Create(Button.UIStroke, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {Transparency = 0.5}):Play()
-
-        -- Callback Handling
+        -- Execute callback first
         local Success, Response = pcall(ButtonSettings.Callback)
         if not Success then
             -- Error Animation
@@ -4275,6 +4268,13 @@ function Tab:CreateButton(ButtonSettings)
             task.wait(0.5)
             Button.Title.Text = ButtonSettings.Name
             TweenService:Create(Button, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
+        else
+            -- Proceed with click animation after callback execution
+            TweenService:Create(Button, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {BackgroundColor3 = Color3.fromRGB(136, 131, 163)}):Play()
+            TweenService:Create(Button.UIStroke, TweenInfo.new(0.2, Enum.EasingStyle.Quad), {Transparency = 0.8}):Play()
+            task.wait(0.15)
+            TweenService:Create(Button, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
+            TweenService:Create(Button.UIStroke, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {Transparency = 0.5}):Play()
         end
     end)
 
