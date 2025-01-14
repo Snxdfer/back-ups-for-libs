@@ -6464,14 +6464,14 @@ end
 end
 
 function Luna:Destroy()
-	Main.Visible = false
-	for _, Notification in ipairs(Notifications:GetChildren()) do
-		if Notification.ClassName == "Frame" then
-			Notification.Visible = false
-			Notification:Destroy()
-		end
-	end
-	LunaUI:Destroy()
+    Main.Visible = false
+    for _, Notification in ipairs(Notifications:GetChildren()) do
+        if Notification:IsA("Frame") then
+            Notification.Visible = false
+            Notification:Destroy()
+        end
+    end
+    LunaUI:Destroy()
 end
 
 task.delay(4, function() 
