@@ -2045,41 +2045,55 @@ end
 
 
 function Luna:CreateWindow(WindowSettings)
+    WindowSettings = Kwargify({
+        Name = "Luna UI Example Window",
+        Subtitle = "",
+        LogoID = "6031097225",
+        LoadingEnabled = true,
+        LoadingTitle = "Luna Interface Suite",
+        LoadingSubtitle = "by Nebula Softworks",
+        SaveConfig = true,
+        ConfigSettings = {},
+        KeySystem = false,
+        KeySettings = {}
+    }, WindowSettings or {})
 
-	WindowSettings = Kwargify({
-		Name = "Luna UI Example Window",
-		Subtitle = "",
-		LogoID = "6031097225",
-		LoadingEnabled = true,
-		LoadingTitle = "Luna Interface Suite",
-		LoadingSubtitle = "by Nebula Softworks",
+    WindowSettings.ConfigSettings = Kwargify({
+        RootFolder = nil,
+        ConfigFolder = "Big Hub"
+    }, WindowSettings.ConfigSettings or {})
 
-		ConfigSettings = {},
-
-		KeySystem = false,
-		KeySettings = {}
-	}, WindowSettings or {})
-
-	WindowSettings.ConfigSettings = Kwargify({
-		RootFolder = nil,
-		ConfigFolder = "Big Hub"
-	}, WindowSettings.ConfigSettings or {})
-
-	WindowSettings.KeySettings = Kwargify({
-		Title = WindowSettings.Name,
-		Subtitle = "Key System",
-		Note = "No Instructions",
-		SaveInRoot = false, -- Enabling will save the key in your RootFolder (YOU MUST HAVE ONE BEFORE ENABLING THIS OPTION)
-		SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
-		Key = {""}, -- List of keys that will be accepted by the system, please use a system like Pelican or Luarmor that provide key strings based on your HWID since putting a simple string is very easy to bypass
-		SecondAction = {}	
-	}, WindowSettings.KeySettings or {})
+    WindowSettings.KeySettings = Kwargify({
+        Title = WindowSettings.Name,
+        Subtitle = "Key System",
+        Note = "No Instructions",
+        SaveInRoot = false, -- Enabling will save the key in your RootFolder (YOU MUST HAVE ONE BEFORE ENABLING THIS OPTION)
+        SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
+        Key = {""}, -- List of keys that will be accepted by the system, please use a system like Pelican or Luarmor that provide key strings based on your HWID since putting a simple string is very easy to bypass
+        SecondAction = {}
+    }, WindowSettings.KeySettings or {})
 
 	WindowSettings.KeySettings.SecondAction = Kwargify({
 		Enabled = false,
 		Type = "Discord", -- Link/Discord
 		Parameter = "" -- for discord, add the invite link like home tab. for link, type the link of ur key sys
 	}, WindowSettings.KeySettings.SecondAction)
+
+    if WindowSettings.SaveConfig then
+        local configFolder = WindowSettings.ConfigSettings.ConfigFolder
+        local rootFolder = WindowSettings.ConfigSettings.RootFolder
+        local fullPath = rootFolder and (rootFolder .. "/" .. configFolder) or configFolder
+
+        if not isfolder(fullPath) then
+            makefolder(fullPath)
+        end
+
+        local configFile = fullPath .. "/config.json"
+        writefile(configFile, game:GetService("HttpService"):JSONEncode(WindowSettings))
+    end
+
+    return WindowSettings
+end
 
 	local Passthrough = false
 
