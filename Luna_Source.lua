@@ -1,26 +1,5 @@
---[[
-~ Luna Interface Suite by Nebula Softworks ~
-
-[What's new?]
-
-[~] Key System 
-         ^ [%] Fixed Key System
-
-[~] Notification
-         ^ [+] Duration
-
-[~] UI
-     ^ [-] Blur
-
------------------------------------------------------
-
-[~]: Built-In
-[%]: Rewritten/Fixed/Updated
-[+]: Added
-[-]: Removed
-
-]]
 local function main()
+	
 local Release = "Prerelease Beta 6.2"
 
 local Luna = { 
@@ -6472,8 +6451,8 @@ task.delay(4, function()
 	Luna:LoadAutoloadConfig()
 end)
 
-return Luna
-
 end
+
+return Luna
 
 main()
