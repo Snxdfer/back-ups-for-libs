@@ -20,7 +20,7 @@
 [-]: Removed
 
 ]]
-
+local function main()
 local Release = "Prerelease Beta 6.2"
 
 local Luna = { 
@@ -6473,3 +6473,7 @@ task.delay(4, function()
 end)
 
 return Luna
+
+end
+
+main()
