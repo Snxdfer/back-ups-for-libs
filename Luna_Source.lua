@@ -1,4 +1,5 @@
 --[[
+~ Luna Interface Suite by Nebula Softworks ~
 
 [What's new?]
 
@@ -17,15 +18,6 @@
 [%]: Rewritten/Fixed/Updated
 [+]: Added
 [-]: Removed
-
-]]
-
---[[
-
-Luna Interface Suite
-by Nebula Softworks.
-
-"Luna Executor" | Original UI.
 
 ]]
 
@@ -54,11 +46,6 @@ local CoreGui = game:GetService("CoreGui")
 local isStudio
 local website = ""
 
-if RunService:IsStudio() then
-	isStudio = true
-end
-
--- Credits To Latte Softworks And qweery for Lucide And Material Icons Respectively.
 local IconModule = {
 	Lucide = nil,
 	Material = {
@@ -1565,73 +1552,70 @@ local PresetGradients = {
 }
 
 local function GetIcon(icon, source)
-	if source == "Custom" then
-		return "rbxassetid://" .. icon
-	elseif source == "Lucide" then
-		local iconData = not isStudio and game:HttpGet("https://raw.githubusercontent.com/latte-soft/lucide-roblox/refs/heads/master/lib/Icons.luau")
-		local icons = isStudio and IconModule.Lucide or loadstring(iconData)()
-		if not isStudio then
-			icon = string.match(string.lower(icon), "^%s*(.*)%s*$") :: string
-			local sizedicons = icons['48px']
-
-			local r = sizedicons[icon]
-			if not r then
-				error("Lucide Icons: Failed to find icon by the name of \"" .. icon .. "\.", 2)
-			end
-
-			local rirs = r[2]
-			local riro = r[3]
-
-			if type(r[1]) ~= "number" or type(rirs) ~= "table" or type(riro) ~= "table" then
-				error("Lucide Icons: Internal error: Invalid auto-generated asset entry")
-			end
-
-			local irs = Vector2.new(rirs[1], rirs[2])
-			local iro = Vector2.new(riro[1], riro[2])
-
-			local asset = {
-				id = r[1],
-				imageRectSize = irs,
-				imageRectOffset = iro,
-			}
-
-			return asset
-		else
-			return "rbxassetid://10723434557"
-		end
-	else	
-		if icon ~= nil and IconModule[source] then
-			local sourceicon = IconModule[source]
-			return sourceicon[icon]
-		else
-			return nil
-		end
-	end
+    if source == "Custom" then
+        return "rbxassetid://" .. icon
+    elseif source == "Lucide" then
+        local iconData = game:HttpGet("https://raw.githubusercontent.com/latte-soft/lucide-roblox/refs/heads/master/lib/Icons.luau")
+        local icons = loadstring(iconData)()
+        
+        icon = string.match(string.lower(icon), "^%s*(.*)%s*$") :: string
+        local sizedicons = icons['48px']
+        
+        local r = sizedicons[icon]
+        if not r then
+            error("Lucide Icons: Failed to find icon by the name of \"" .. icon .. "\".", 2)
+        end
+        
+        local rirs = r[2]
+        local riro = r[3]
+        
+        if type(r[1]) ~= "number" or type(rirs) ~= "table" or type(riro) ~= "table" then
+            error("Lucide Icons: Internal error: Invalid auto-generated asset entry")
+        end
+        
+        local irs = Vector2.new(rirs[1], rirs[2])
+        local iro = Vector2.new(riro[1], riro[2])
+        
+        local asset = {
+            id = r[1],
+            imageRectSize = irs,
+            imageRectOffset = iro,
+        }
+        
+        return asset
+    else    
+        if icon ~= nil and IconModule[source] then
+            local sourceicon = IconModule[source]
+            return sourceicon[icon]
+        else
+            return nil
+        end
+    end
 end
 
 local function RemoveTable(tablre, value)
-	for i,v in pairs(tablre) do
-		if tostring(v) == tostring(value) then
-			table.remove(tablre, i)
-		end
-	end
+    for i, v in pairs(tablre) do
+        if tostring(v) == tostring(value) then
+            table.remove(tablre, i)
+        end
+    end
 end
 
 local function Kwargify(defaults, passed)
-	for i, v in pairs(defaults) do
-		if passed[i] == nil then
-			passed[i] = v
-		end
-	end
-	return passed
+    for i, v in pairs(defaults) do
+        if passed[i] == nil then
+            passed[i] = v
+        end
+    end
+    return passed
 end
 
 local function PackColor(Color)
-	return {R = Color.R * 255, G = Color.G * 255, B = Color.B * 255}
+    return {R = Color.R * 255, G = Color.G * 255, B = Color.B * 255}
 end    
 
 local function UnpackColor(Color)
-	return Color3.fromRGB(Color.R, Color.G, Color.B)
+    return Color3.fromRGB(Color.R, Color.G, Color.B)
 end
 
 function tween(object, goal, callback, tweenin)
@@ -1644,24 +1628,23 @@ function tween(object, goal, callback, tweenin)
 end
 
 local function unpackt(array : table)
+    local val = ""
+    local i = 0
+    for _, v in pairs(array) do
+        if i < 3 then
+            val = val .. v .. ", "
+            i += 1
+        else
+            val = "Various"
+            break
+        end
+    end
 
-	local val = ""
-	local i = 0
-	for _,v in pairs(array) do
-		if i < 3 then
-			val = val .. v .. ", "
-			i += 1
-		else
-			val = "Various"
-			break
-		end
-	end
-
-	return val
+    return val
 end
 
 -- Interface Management
-local LunaUI = isStudio and script.Parent:WaitForChild("Luna UI") or game:GetObjects("rbxassetid://86467455075715")[1]
+local LunaUI = game:GetObjects("rbxassetid://86467455075715")[1]
 
 local SizeBleh = nil
 
@@ -1705,34 +1688,33 @@ local function Hide(Window, bind, notif)
 	Window.Visible = false
 end
 
-
 if gethui then
-	LunaUI.Parent = gethui()
-elseif syn and syn.protect_gui then 
-	syn.protect_gui(LunaUI)
-	LunaUI.Parent = CoreGui
-elseif not isStudio and CoreGui:FindFirstChild("RobloxGui") then
-	LunaUI.Parent = CoreGui:FindFirstChild("RobloxGui")
-elseif not isStudio then
-	LunaUI.Parent = CoreGui
+    LunaUI.Parent = gethui()
+elseif syn and syn.protect_gui then
+    syn.protect_gui(LunaUI)
+    LunaUI.Parent = CoreGui
+elseif CoreGui:FindFirstChild("RobloxGui") then
+    LunaUI.Parent = CoreGui:FindFirstChild("RobloxGui")
+else
+    LunaUI.Parent = CoreGui
 end
 
 if gethui then
-	for _, Interface in ipairs(gethui():GetChildren()) do
-		if Interface.Name == LunaUI.Name and Interface ~= LunaUI then
-			Hide(Interface.SmartWindow)
-			Interface.Enabled = false
-			Interface.Name = "Luna-Old"
-		end
-	end
-elseif not isStudio then
-	for _, Interface in ipairs(CoreGui:GetChildren()) do
-		if Interface.Name == LunaUI.Name and Interface ~= LunaUI then
-			Hide(Interface.SmartWindow)
-			Interface.Enabled = false
-			Interface.Name = "Luna-Old"
-		end
-	end
+    for _, Interface in ipairs(gethui():GetChildren()) do
+        if Interface.Name == LunaUI.Name and Interface ~= LunaUI then
+            Hide(Interface.SmartWindow)
+            Interface.Enabled = false
+            Interface.Name = "Luna-Old"
+        end
+    end
+else
+    for _, Interface in ipairs(CoreGui:GetChildren()) do
+        if Interface.Name == LunaUI.Name and Interface ~= LunaUI then
+            Hide(Interface.SmartWindow)
+            Interface.Enabled = false
+            Interface.Name = "Luna-Old"
+        end
+    end
 end
 
 LunaUI.Enabled = false
