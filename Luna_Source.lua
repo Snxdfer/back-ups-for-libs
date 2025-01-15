@@ -1,5 +1,3 @@
-local function main()
-	
 local Release = "Prerelease Beta 6.2"
 
 local Luna = { 
@@ -6424,8 +6422,10 @@ end
 	return Window
 end
 
+local Luna = {}
+
 function Luna:Destroy()
-    -- Hide the main UI
+        -- Hide the main UI
     if Main then
         Main.Visible = false
     end
@@ -6444,11 +6444,6 @@ function Luna:Destroy()
     if LunaUI then
         LunaUI:Destroy()
     end
-
-    -- Optionally, clear any references to prevent memory leaks
-    Main = nil
-    Notifications = nil
-    LunaUI = nil
 end
 
 task.delay(4, function() 
@@ -6456,6 +6451,3 @@ task.delay(4, function()
 end)
 
 return Luna
-
-end
-main()
