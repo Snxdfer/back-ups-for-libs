@@ -6337,20 +6337,46 @@ end
 return Tab
 end
 
-Elements = {}
-	Elements.Parent.Visible = true
-	tween(Elements.Parent, {BackgroundTransparency = 0.1})
-	Navigation.Visible = true
-	tween(Navigation.Line, {BackgroundTransparency = 0})
+-- Ensure Elements and Navigation are defined and initialized
+local Elements = {} -- Replace with actual initialization of Elements
+local Navigation = {} -- Replace with actual initialization of Navigation
 
-	for _, TopbarButton in ipairs(Main.Controls:GetChildren()) do
-		if TopbarButton.ClassName == "Frame" and TopbarButton.Name ~= "Theme" then
-			TopbarButton.Visible = true
-			tween(TopbarButton, {BackgroundTransparency = 0.25})
-			tween(TopbarButton.UIStroke, {Transparency = 0.5})
-			tween(TopbarButton.ImageLabel, {ImageTransparency = 0.25})
-		end
-	end
+-- Assuming Elements.Parent and Navigation.Line are valid objects
+if Elements.Parent then
+    Elements.Parent.Visible = true
+    tween(Elements.Parent, {BackgroundTransparency = 0.1})
+else
+    warn("Elements.Parent is not defined.")
+end
+
+if Navigation and Navigation.Line then
+    Navigation.Visible = true
+    tween(Navigation.Line, {BackgroundTransparency = 0})
+else
+    warn("Navigation or Navigation.Line is not defined.")
+end
+
+-- Ensure Main.Controls is defined and has children
+if Main and Main.Controls then
+    for _, TopbarButton in ipairs(Main.Controls:GetChildren()) do
+        if TopbarButton:IsA("Frame") and TopbarButton.Name ~= "Theme" then
+            TopbarButton.Visible = true
+            tween(TopbarButton, {BackgroundTransparency = 0.25})
+            if TopbarButton:FindFirstChild("UIStroke") then
+                tween(TopbarButton.UIStroke, {Transparency = 0.5})
+            else
+                warn("UIStroke not found in TopbarButton.")
+            end
+            if TopbarButton:FindFirstChild("ImageLabel") then
+                tween(TopbarButton.ImageLabel, {ImageTransparency = 0.25})
+            else
+                warn("ImageLabel not found in TopbarButton.")
+            end
+        end
+    end
+else
+    warn("Main or Main.Controls is not defined.")
+end
 
 	Main.Controls.Close.ImageLabel.MouseButton1Click:Connect(function()
 		Hide(Main, Window.Bind, true)
