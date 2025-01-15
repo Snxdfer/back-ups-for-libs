@@ -6425,15 +6425,30 @@ end
 end
 
 function Luna:Destroy()
-    Main.Visible = false
-    for _, Notification in ipairs(Notifications:GetChildren()) do
-        if Notification:IsA("UIListLayout") then
-            Notification.Visible = false
-            Notification:Destroy()
+    -- Hide the main UI
+    if Main then
+        Main.Visible = false
+    end
+
+    -- Clean up notifications
+    if Notifications then
+        for _, Notification in ipairs(Notifications:GetChildren()) do
+            if Notification:IsA("Frame") then
+                Notification.Visible = false
+                Notification:Destroy()
+            end
         end
     end
-end
-    LunaUI:Destroy()
+
+    -- Safely destroy the Luna UI
+    if LunaUI then
+        LunaUI:Destroy()
+    end
+
+    -- Optionally, clear any references to prevent memory leaks
+    Main = nil
+    Notifications = nil
+    LunaUI = nil
 end
 
 task.delay(4, function() 
