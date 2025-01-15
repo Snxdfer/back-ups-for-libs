@@ -6337,7 +6337,7 @@ end
 return Tab
 end
 
-
+local Elements = {}
 	Elements.Parent.Visible = true
 	tween(Elements.Parent, {BackgroundTransparency = 0.1})
 	Navigation.Visible = true
