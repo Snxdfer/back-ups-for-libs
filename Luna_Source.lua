@@ -6451,8 +6451,7 @@ task.delay(4, function()
 	Luna:LoadAutoloadConfig()
 end)
 
-end
-
 return Luna
 
+end
 main()
