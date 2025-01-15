@@ -6432,6 +6432,7 @@ function Luna:Destroy()
             Notification:Destroy()
         end
     end
+end
     LunaUI:Destroy()
 end
 
