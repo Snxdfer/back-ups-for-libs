@@ -6471,7 +6471,6 @@ function Luna:Destroy()
             Notification:Destroy()
         end
     end
-    LunaUI:Destroy()
 end
 
 task.delay(4, function() 
