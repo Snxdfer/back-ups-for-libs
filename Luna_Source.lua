@@ -6427,7 +6427,7 @@ end
 function Luna:Destroy()
     Main.Visible = false
     for _, Notification in ipairs(Notifications:GetChildren()) do
-        if Notification:IsA("Frame") then
+        if Notification:IsA("UIListLayout") then
             Notification.Visible = false
             Notification:Destroy()
         end
