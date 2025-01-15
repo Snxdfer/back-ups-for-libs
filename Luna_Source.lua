@@ -6324,14 +6324,12 @@ local Navigation = {} -- Replace with actual initialization of Navigation
 if Elements.Parent then
     Elements.Parent.Visible = true
     tween(Elements.Parent, {BackgroundTransparency = 0.1})
-end
-end
+end  -- Correctly closes the first if statement
 
 if Navigation and Navigation.Line then
     Navigation.Visible = true
     tween(Navigation.Line, {BackgroundTransparency = 0})
-end
-end
+end  -- Correctly closes the second if statement
 
 -- Ensure Main.Controls is defined and has children
 if Main and Main.Controls then
