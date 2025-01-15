@@ -6345,6 +6345,7 @@ local Navigation = {} -- Replace with actual initialization of Navigation
 if Elements.Parent then
     Elements.Parent.Visible = true
     tween(Elements.Parent, {BackgroundTransparency = 0.1})
+end
 else
     warn("Elements.Parent is not defined.")
 end
@@ -6352,6 +6353,7 @@ end
 if Navigation and Navigation.Line then
     Navigation.Visible = true
     tween(Navigation.Line, {BackgroundTransparency = 0})
+end
 else
     warn("Navigation or Navigation.Line is not defined.")
 end
