@@ -2261,22 +2261,19 @@ if WindowSettings.LoadingEnabled then
 			HomeTab:Activate()
 		end)
 
-
 		HomeTabPage.icon.ImageLabel.Image = Players:GetUserThumbnailAsync(Players.LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
-                HomeTabPage.player.Text.Text = "Hello, " .. Players.LocalPlayer.DisplayName
-                HomeTabPage.player.user.Text = Players.LocalPlayer.Name .. " - " .. WindowSettings.Name
+		HomeTabPage.player.Text.Text = "Hello, " .. Players.LocalPlayer.DisplayName
+		HomeTabPage.player.user.Text = Players.LocalPlayer.Name .. " - ".. WindowSettings.Name
 
-                local executor = identifyexecutor() or "Your Executor Does Not Support identifyexecutor."
-                HomeTabPage.detailsholder.dashboard.Client.Title.Text = executor
-
-                for _, v in pairs(HomeTabSettings.SupportedExecutors) do
-                if v == executor then
-                HomeTabPage.detailsholder.dashboard.Client.Subtitle.Text = "Your Executor Supports This Script."
-                break
-                else
-                HomeTabPage.detailsholder.dashboard.Client.Subtitle.Text = "Your Executor Isn't Officially Supported By This Script."
-                end
-                end
+		HomeTabPage.detailsholder.dashboard.Client.Title.Text = (isStudio and "Debugging (Studio)" or identifyexecutor()) or "Your Executor Does Not Support identifyexecutor."
+		for i,v in pairs(HomeTabSettings.SupportedExecutors) do
+			if isStudio then HomeTabPage.detailsholder.dashboard.Client.Subtitle.Text = "Luna Interface Suite - Debugging Mode" break end
+			if v == identifyexecutor() then
+				HomeTabPage.detailsholder.dashboard.Client.Subtitle.Text = "Your Executor Supports This Script."
+			else
+				HomeTabPage.detailsholder.dashboard.Client.Subtitle.Text = "Your Executor Isn't Officialy Supported By This Script."
+			end
+		end
 
 		-- Stolen From Sirius Stuff Begins Here
 
@@ -2362,20 +2359,21 @@ if WindowSettings.LoadingEnabled then
 		coroutine.wrap(function()
 			while task.wait() do
 
+
 				-- Players
-                                HomeTabPage.detailsholder.dashboard.Server.Players.Value.Text = #Players:GetPlayers() .. " playing"
-                                HomeTabPage.detailsholder.dashboard.Server.MaxPlayers.Value.Text = Players.MaxPlayers .. " players can join this server"
+				HomeTabPage.detailsholder.dashboard.Server.Players.Value.Text = #Players:GetPlayers().." playing"
+				HomeTabPage.detailsholder.dashboard.Server.MaxPlayers.Value.Text = Players.MaxPlayers.." players can join this server"
 
-                                -- Ping
-                                HomeTabPage.detailsholder.dashboard.Server.Latency.Value.Text = tostring(math.round((Players.LocalPlayer:GetNetworkPing() * 2 ) / 0.01)) .."ms" or tostring(math.floor(getPing()) .."ms")
+				-- Ping
+				HomeTabPage.detailsholder.dashboard.Server.Latency.Value.Text = isStudio and tostring(math.round((Players.LocalPlayer:GetNetworkPing() * 2 ) / 0.01)) .."ms" or tostring(math.floor(getPing()) .."ms")
 
-                                -- Time
-                                HomeTabPage.detailsholder.dashboard.Server.Time.Value.Text = convertToHMS(time())
+				-- Time
+				HomeTabPage.detailsholder.dashboard.Server.Time.Value.Text = convertToHMS(time())
 
-                                -- Region
-                                HomeTabPage.detailsholder.dashboard.Server.Region.Value.Text = Localization:GetCountryRegionForPlayerAsync(Players.LocalPlayer)
+				-- Region
+				HomeTabPage.detailsholder.dashboard.Server.Region.Value.Text = Localization:GetCountryRegionForPlayerAsync(Players.LocalPlayer)
 
-                                checkFriends()
+				checkFriends()
 			end
 		end)()
 
@@ -6178,80 +6176,88 @@ end
 		end
 
 
-local function BuildFolderTree()
-    local paths = {
-        Luna.Folder,
-        Luna.Folder .. "/settings"
-    }
+		local function BuildFolderTree()
+			if isStudio then return "Config system unavailable." end
+			local paths = {
+				Luna.Folder,
+				Luna.Folder .. "/settings"
+			}
 
-    for i = 1, #paths do
-        local str = paths[i]
-        if not isfolder(str) then
-            makefolder(str)
-        end
-    end
-end
+			for i = 1, #paths do
+				local str = paths[i]
+				if not isfolder(str) then
+					makefolder(str)
+				end
+			end
+		end
 
-local function SetFolder()
-    if WindowSettings.ConfigSettings.RootFolder ~= nil and WindowSettings.ConfigSettings.RootFolder ~= "" then
-        Luna.Folder = WindowSettings.ConfigSettings.RootFolder .. "/" .. WindowSettings.ConfigSettings.ConfigFolder
-    else
-        Luna.Folder = WindowSettings.ConfigSettings.ConfigFolder
-    end
+		local function SetFolder()
 
-    BuildFolderTree()
-end
+			if isStudio then return "Config system unavailable." end
 
-SetFolder()
+			if WindowSettings.ConfigSettings.RootFolder ~= nil and WindowSettings.ConfigSettings.RootFolder ~= "" then
+				Luna.Folder = WindowSettings.ConfigSettings.RootFolder .. "/" .. WindowSettings.ConfigSettings.ConfigFolder
+			else
+				Luna.Folder = WindowSettings.ConfigSettings.ConfigFolder
+			end
 
-function Luna:SaveConfig(Path)
-    if (not Path) then
-        return false, "Please select a config file."
-    end
+			BuildFolderTree()
+		end
 
-    local fullPath = Luna.Folder .. "/settings/" .. Path .. ".luna"
+		SetFolder()
 
-    local data = {
-        objects = {}
-    }
+		function Luna:SaveConfig(Path)
+			if isStudio then return "Config system unavailable." end
 
-    for flag, option in next, Luna.Options do
-        if not ClassParser[option.Class] then continue end
-        if option.IgnoreConfig then continue end
+			if (not Path) then
+				return false, "Please select a config file."
+			end
 
-        table.insert(data.objects, ClassParser[option.Class].Save(flag, option))
-    end
+			local fullPath = Luna.Folder .. "/settings/" .. Path .. ".luna"
 
-    local success, encoded = pcall(HttpService.JSONEncode, HttpService, data)
-    if not success then
-        return false, "Unable to encode into JSON data"
-    end
+			local data = {
+				objects = {}
+			}
 
-    writefile(fullPath, encoded)
-    return true
-end
+			for flag, option in next, Luna.Options do
+				if not ClassParser[option.Class] then continue end
+				if option.IgnoreConfig then continue end
 
-function Luna:LoadConfig(Path)
-    if (not Path) then
-        return false, "Please select a config file."
-    end
+				table.insert(data.objects, ClassParser[option.Class].Save(flag, option))
+			end	
 
-    local file = Luna.Folder .. "/settings/" .. Path .. ".luna"
-    if not isfile(file) then return false, "Invalid file" end
+			local success, encoded = pcall(HttpService.JSONEncode, HttpService, data)
+			if not success then
+				return false, "Unable to encode into JSON data"
+			end
 
-    local success, decoded = pcall(HttpService.JSONDecode, HttpService, readfile(file))
-    if not success then return false, "Unable to decode JSON data." end
+			writefile(fullPath, encoded)
+			return true
+		end
 
-    for _, option in next, decoded.objects do
-        if ClassParser[option.type] then
-            task.spawn(function()
-                ClassParser[option.type].Load(option.flag, option)
-            end)
-        end
-    end
+		function Luna:LoadConfig(Path)
+			if isStudio then return "Config system unavailable." end
 
-    return true
-end
+			if (not Path) then
+				return false, "Please select a config file."
+			end
+
+			local file = Luna.Folder .. "/settings/" .. Path .. ".luna"
+			if not isfile(file) then return false, "Invalid file" end
+
+			local success, decoded = pcall(HttpService.JSONDecode, HttpService, readfile(file))
+			if not success then return false, "Unable to decode JSON data." end
+
+			for _, option in next, decoded.objects do
+				if ClassParser[option.type] then
+					task.spawn(function() 
+						ClassParser[option.type].Load(option.flag, option) 
+					end)
+				end
+			end
+
+			return true
+		end
 
 function Luna:LoadAutoloadConfig()
     if isfile(Luna.Folder .. "/settings/autoload.txt") then
