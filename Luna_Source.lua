@@ -5652,6 +5652,7 @@ function Luna:Destroy()
         warn("Luna:Destroy() called but Main is nil.")
     end
 end
+end
 task.delay(4, function() 
 	Luna:LoadAutoloadConfig()
 end)
