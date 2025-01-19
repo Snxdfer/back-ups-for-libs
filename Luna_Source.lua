@@ -5858,44 +5858,55 @@ end
 
 			Tab:CreateSection("Config Creator")
 
-Tab:CreateButton({
-    Name = "Create Config",
-    Description = "Create a config with all of your current settings.",
-    Callback = function()
-        if not inputPath or string.gsub(inputPath, " ", "") == "" then
-            Luna:Notification({
-                Title = "Interface",
-                Icon = "warning",
-                ImageSource = "Material",
-                Content = "Config name cannot be empty."
-            })
-            return
-        end
+			Tab:CreateInput({
+				Name = "Config Name",
+				Description = "Insert a name for your to be created config.",
+				PlaceholderText = "Name",
+				CurrentValue = "",
+				Numeric = false,
+				MaxCharacters = nil,
+				Enter = false,
+				Callback = function(input)
+					inputPath = input
+				end,
+			})
 
-        -- Ensure inputPath is not nil or empty
-        inputPath = inputPath or "default_config_name"
+			local configSelection
 
-        local success, returned = Luna:SaveConfig(inputPath)
-        if not success then
-            Luna:Notification({
-                Title = "Interface",
-                Icon = "error",
-                ImageSource = "Material",
-                Content = "Unable to save config, return error: " .. returned
-            })
-        end
+			Tab:CreateButton({
+				Name = "Create Config",
+				Description = "Create a config with all of your current settings.",
+				Callback = function()
+					if not inputPath or string.gsub(inputPath, " ", "") == "" then
+						Luna:Notification({
+							Title = "Interface",
+							Icon = "warning",
+							ImageSource = "Material",
+							Content = "Config name cannot be empty."
+						})
+						return
+					end
 
-        Luna:Notification({
-            Title = "Interface",
-            Icon = "info",
-            ImageSource = "Material",
-            Content = string.format("Created config %q", inputPath),
-        })
+					local success, returned = Luna:SaveConfig(inputPath)
+					if not success then
+						Luna:Notification({
+							Title = "Interface",
+							Icon = "error",
+							ImageSource = "Material",
+							Content = "Unable to save config, return error: " .. returned
+						})
+					end
 
-        configSelection:Set({ Options = Luna:RefreshConfigList() })
-    end
-})
+					Luna:Notification({
+						Title = "Interface",
+						Icon = "info",
+						ImageSource = "Material",
+						Content = string.format("Created config %q", inputPath),
+					})
 
+					configSelection:Set({ Options = Luna:RefreshConfigList() })
+				end
+			})
 
 			Tab:CreateSection("Config Load/Settings")
 
@@ -6071,6 +6082,7 @@ Tab:CreateButton({
 					end
 				end
 			},
+			-- buggy as hell stil
 			["Colorpicker"] = {
 				Save = function(Flag, data)
 					local function Color3ToHex(color)
@@ -6100,102 +6112,75 @@ Tab:CreateButton({
 		}
 
 
-function Tab:BuildThemeSection()
+		function Tab:BuildThemeSection()
 
-    local Title = Elements.Template.Title:Clone()
-    Title.Text = "Theming"
-    Title.Visible = true
-    Title.Parent = TabPage
-    Title.TextTransparency = 1
-    TweenService:Create(Title, TweenInfo.new(0.4, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+			local Title = Elements.Template.Title:Clone()
+			Title.Text = "Theming"
+			Title.Visible = true
+			Title.Parent = TabPage
+			Title.TextTransparency = 1
+			TweenService:Create(Title, TweenInfo.new(0.4, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
 
-    Tab:CreateSection("Custom Editor")
+			Tab:CreateSection("Custom Editor")
 
-    -- Ensure c1cp, c2cp, c3cp are initialized correctly before calling Set
-    if c1cp then
-        c1cp:Set({
-            Callback = function(Value)
-                if c2cp and c3cp then
-                    local color1 = Value or Color3.fromRGB(255, 255, 255)
-                    local color2 = c2cp.Color or Color3.fromRGB(255, 255, 255)
-                    local color3 = c3cp.Color or Color3.fromRGB(255, 255, 255)
-                    
-                    -- Ensure all colors are Color3 before passing to ColorSequenceKeypoint
-                    Luna.ThemeGradient = ColorSequence.new{
-                        ColorSequenceKeypoint.new(0.00, color1),
-                        ColorSequenceKeypoint.new(0.50, color2),
-                        ColorSequenceKeypoint.new(1.00, color3)
-                    }
-                    LunaUI.ThemeRemote.Value = not LunaUI.ThemeRemote.Value
-                end
-            end
-        })
-    else
-        warn("c1cp is not initialized")
-    end
+			local c1cp = Tab:CreateColorPicker({
+				Name = "Color 1",
+				Color = Color3.fromRGB(117, 164, 206),
+			}, "LunaInterfaceSuitePrebuiltCPC1") -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
 
-    if c2cp then
-        c2cp:Set({
-            Callback = function(Value)
-                if c1cp and c3cp then
-                    local color1 = c1cp.Color or Color3.fromRGB(255, 255, 255)
-                    local color2 = Value or Color3.fromRGB(255, 255, 255)
-                    local color3 = c3cp.Color or Color3.fromRGB(255, 255, 255)
-                    
-                    -- Ensure all colors are Color3 before passing to ColorSequenceKeypoint
-                    Luna.ThemeGradient = ColorSequence.new{
-                        ColorSequenceKeypoint.new(0.00, color1),
-                        ColorSequenceKeypoint.new(0.50, color2),
-                        ColorSequenceKeypoint.new(1.00, color3)
-                    }
-                    LunaUI.ThemeRemote.Value = not LunaUI.ThemeRemote.Value
-                end
-            end
-        })
-    else
-        warn("c2cp is not initialized")
-    end
+			local c2cp = Tab:CreateColorPicker({
+				Name = "Color 2",
+				Color = Color3.fromRGB(123, 201, 201),
+			}, "LunaInterfaceSuitePrebuiltCPC2")
 
-    if c3cp then
-        c3cp:Set({
-            Callback = function(Valuex)
-                if c2cp and c1cp then
-                    local color1 = c1cp.Color or Color3.fromRGB(255, 255, 255)
-                    local color2 = c2cp.Color or Color3.fromRGB(255, 255, 255)
-                    local color3 = Valuex or Color3.fromRGB(255, 255, 255)
-                    
-                    -- Ensure all colors are Color3 before passing to ColorSequenceKeypoint
-                    Luna.ThemeGradient = ColorSequence.new{
-                        ColorSequenceKeypoint.new(0.00, color1),
-                        ColorSequenceKeypoint.new(0.50, color2),
-                        ColorSequenceKeypoint.new(1.00, color3)
-                    }
-                    LunaUI.ThemeRemote.Value = not LunaUI.ThemeRemote.Value
-                end
-            end
-        })
-    else
-        warn("c3cp is not initialized")
-    end
+			local c3cp = Tab:CreateColorPicker({
+				Name = "Color 3",
+				Color = Color3.fromRGB(224, 138, 184),
+			}, "LunaInterfaceSuitePrebuiltCPC3") 
 
-    Tab:CreateSection("Preset Gradients")
+			task.wait(1)
 
-    for i, v in pairs(PresetGradients) do
-        Tab:CreateButton({
-            Name = tostring(i),
-            Callback = function()
-                if c1cp and c2cp and c3cp then
-                    c1cp:Set({ Color = v[1] })
-                    c2cp:Set({ Color = v[2] })
-                    c3cp:Set({ Color = v[3] })
-                else
-                    warn("Color pickers are not initialized properly")
-                end
-            end,
-        })
-    end
+			c1cp:Set({
+				Callback = function(Value)
+					if c2cp and c3cp then
+						Luna.ThemeGradient = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Value or Color3.fromRGB(255,255,255)), ColorSequenceKeypoint.new(0.50, c2cp.Color or Color3.fromRGB(255,255,255)), ColorSequenceKeypoint.new(1.00, c3cp.Color or Color3.fromRGB(255,255,255))}
+						LunaUI.ThemeRemote.Value = not LunaUI.ThemeRemote.Value
+					end
+				end
+			})
 
-end
+			c2cp:Set({
+				Callback = function(Value)
+					if c1cp and c3cp then
+						Luna.ThemeGradient = ColorSequence.new{ColorSequenceKeypoint.new(0.00, c1cp.Color or Color3.fromRGB(255,255,255)), ColorSequenceKeypoint.new(0.50, Value or Color3.fromRGB(255,255,255)), ColorSequenceKeypoint.new(1.00, c3cp.Color or Color3.fromRGB(255,255,255))}
+						LunaUI.ThemeRemote.Value = not LunaUI.ThemeRemote.Value
+					end
+				end
+			})
+
+			c3cp:Set({
+				Callback = function(Valuex)
+					if c2cp and c1cp then
+						Luna.ThemeGradient = ColorSequence.new{ColorSequenceKeypoint.new(0.00, c1cp.Color or Color3.fromRGB(255,255,255)), ColorSequenceKeypoint.new(0.50, c2cp.Color or Color3.fromRGB(255,255,255)), ColorSequenceKeypoint.new(1.00, Valuex or Color3.fromRGB(255,255,255))}
+						LunaUI.ThemeRemote.Value = not LunaUI.ThemeRemote.Value
+					end
+				end
+			})
+
+			Tab:CreateSection("Preset Gradients")
+
+			for i,v in pairs(PresetGradients) do
+				Tab:CreateButton({
+					Name = tostring(i),
+					Callback = function()
+						c1cp:Set({ Color = v[1] })
+						c2cp:Set({ Color = v[2] })
+						c3cp:Set({ Color = v[3] })
+					end,
+				})
+			end
+
+		end
 
 
 		local function BuildFolderTree()
