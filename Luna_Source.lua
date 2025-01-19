@@ -6100,85 +6100,102 @@ Tab:CreateButton({
 		}
 
 
-		function Tab:BuildThemeSection()
+function Tab:BuildThemeSection()
 
-			local Title = Elements.Template.Title:Clone()
-			Title.Text = "Theming"
-			Title.Visible = true
-			Title.Parent = TabPage
-			Title.TextTransparency = 1
-			TweenService:Create(Title, TweenInfo.new(0.4, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+    local Title = Elements.Template.Title:Clone()
+    Title.Text = "Theming"
+    Title.Visible = true
+    Title.Parent = TabPage
+    Title.TextTransparency = 1
+    TweenService:Create(Title, TweenInfo.new(0.4, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
 
-			Tab:CreateSection("Custom Editor")
+    Tab:CreateSection("Custom Editor")
 
-c1cp:Set({
-    Callback = function(Value)
-        if c2cp and c3cp then
-            local color1 = Value or Color3.fromRGB(255, 255, 255)
-            local color2 = c2cp.Color or Color3.fromRGB(255, 255, 255)
-            local color3 = c3cp.Color or Color3.fromRGB(255, 255, 255)
-            
-            -- Ensure all colors are Color3 before passing to ColorSequenceKeypoint
-            Luna.ThemeGradient = ColorSequence.new{
-                ColorSequenceKeypoint.new(0.00, color1),
-                ColorSequenceKeypoint.new(0.50, color2),
-                ColorSequenceKeypoint.new(1.00, color3)
-            }
-            LunaUI.ThemeRemote.Value = not LunaUI.ThemeRemote.Value
-        end
+    -- Ensure c1cp, c2cp, c3cp are initialized correctly before calling Set
+    if c1cp then
+        c1cp:Set({
+            Callback = function(Value)
+                if c2cp and c3cp then
+                    local color1 = Value or Color3.fromRGB(255, 255, 255)
+                    local color2 = c2cp.Color or Color3.fromRGB(255, 255, 255)
+                    local color3 = c3cp.Color or Color3.fromRGB(255, 255, 255)
+                    
+                    -- Ensure all colors are Color3 before passing to ColorSequenceKeypoint
+                    Luna.ThemeGradient = ColorSequence.new{
+                        ColorSequenceKeypoint.new(0.00, color1),
+                        ColorSequenceKeypoint.new(0.50, color2),
+                        ColorSequenceKeypoint.new(1.00, color3)
+                    }
+                    LunaUI.ThemeRemote.Value = not LunaUI.ThemeRemote.Value
+                end
+            end
+        })
+    else
+        warn("c1cp is not initialized")
     end
-})
 
-c2cp:Set({
-    Callback = function(Value)
-        if c1cp and c3cp then
-            local color1 = c1cp.Color or Color3.fromRGB(255, 255, 255)
-            local color2 = Value or Color3.fromRGB(255, 255, 255)
-            local color3 = c3cp.Color or Color3.fromRGB(255, 255, 255)
-            
-            -- Ensure all colors are Color3 before passing to ColorSequenceKeypoint
-            Luna.ThemeGradient = ColorSequence.new{
-                ColorSequenceKeypoint.new(0.00, color1),
-                ColorSequenceKeypoint.new(0.50, color2),
-                ColorSequenceKeypoint.new(1.00, color3)
-            }
-            LunaUI.ThemeRemote.Value = not LunaUI.ThemeRemote.Value
-        end
+    if c2cp then
+        c2cp:Set({
+            Callback = function(Value)
+                if c1cp and c3cp then
+                    local color1 = c1cp.Color or Color3.fromRGB(255, 255, 255)
+                    local color2 = Value or Color3.fromRGB(255, 255, 255)
+                    local color3 = c3cp.Color or Color3.fromRGB(255, 255, 255)
+                    
+                    -- Ensure all colors are Color3 before passing to ColorSequenceKeypoint
+                    Luna.ThemeGradient = ColorSequence.new{
+                        ColorSequenceKeypoint.new(0.00, color1),
+                        ColorSequenceKeypoint.new(0.50, color2),
+                        ColorSequenceKeypoint.new(1.00, color3)
+                    }
+                    LunaUI.ThemeRemote.Value = not LunaUI.ThemeRemote.Value
+                end
+            end
+        })
+    else
+        warn("c2cp is not initialized")
     end
-})
 
-c3cp:Set({
-    Callback = function(Valuex)
-        if c2cp and c1cp then
-            local color1 = c1cp.Color or Color3.fromRGB(255, 255, 255)
-            local color2 = c2cp.Color or Color3.fromRGB(255, 255, 255)
-            local color3 = Valuex or Color3.fromRGB(255, 255, 255)
-            
-            -- Ensure all colors are Color3 before passing to ColorSequenceKeypoint
-            Luna.ThemeGradient = ColorSequence.new{
-                ColorSequenceKeypoint.new(0.00, color1),
-                ColorSequenceKeypoint.new(0.50, color2),
-                ColorSequenceKeypoint.new(1.00, color3)
-            }
-            LunaUI.ThemeRemote.Value = not LunaUI.ThemeRemote.Value
-        end
+    if c3cp then
+        c3cp:Set({
+            Callback = function(Valuex)
+                if c2cp and c1cp then
+                    local color1 = c1cp.Color or Color3.fromRGB(255, 255, 255)
+                    local color2 = c2cp.Color or Color3.fromRGB(255, 255, 255)
+                    local color3 = Valuex or Color3.fromRGB(255, 255, 255)
+                    
+                    -- Ensure all colors are Color3 before passing to ColorSequenceKeypoint
+                    Luna.ThemeGradient = ColorSequence.new{
+                        ColorSequenceKeypoint.new(0.00, color1),
+                        ColorSequenceKeypoint.new(0.50, color2),
+                        ColorSequenceKeypoint.new(1.00, color3)
+                    }
+                    LunaUI.ThemeRemote.Value = not LunaUI.ThemeRemote.Value
+                end
+            end
+        })
+    else
+        warn("c3cp is not initialized")
     end
-})
 
-			Tab:CreateSection("Preset Gradients")
+    Tab:CreateSection("Preset Gradients")
 
-			for i,v in pairs(PresetGradients) do
-				Tab:CreateButton({
-					Name = tostring(i),
-					Callback = function()
-						c1cp:Set({ Color = v[1] })
-						c2cp:Set({ Color = v[2] })
-						c3cp:Set({ Color = v[3] })
-					end,
-				})
-			end
+    for i, v in pairs(PresetGradients) do
+        Tab:CreateButton({
+            Name = tostring(i),
+            Callback = function()
+                if c1cp and c2cp and c3cp then
+                    c1cp:Set({ Color = v[1] })
+                    c2cp:Set({ Color = v[2] })
+                    c3cp:Set({ Color = v[3] })
+                else
+                    warn("Color pickers are not initialized properly")
+                end
+            end,
+        })
+    end
 
-		end
+end
 
 
 		local function BuildFolderTree()
