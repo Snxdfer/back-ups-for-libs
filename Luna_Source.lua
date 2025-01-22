@@ -6453,8 +6453,4 @@ if isStudio then
 	})
 end
 
-task.delay(4, function() 
-	Luna:LoadAutoloadConfig()
-end)
-
 return Luna
