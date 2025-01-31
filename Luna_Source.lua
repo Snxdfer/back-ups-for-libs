@@ -5606,8 +5606,8 @@ end
 			}, ColorPickerSettings or {})
 
 			local function Color3ToHex(color)
-    return string.format("#%02X%02X%02X", math.floor(color.r * 255), math.floor(color.g * 255), math.floor(color.b * 255))
-end
+                                return string.format("#%02X%02X%02X", math.floor(color.r * 255), math.floor(color.g * 255), math.floor(color.b * 255))
+                        end
 
 			ColorPickerV.Color = Color3ToHex(ColorPickerSettings.Color)
 
