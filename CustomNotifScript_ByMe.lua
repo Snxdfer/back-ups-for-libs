@@ -1,4 +1,4 @@
--- ChatGPT'd, dont blame me. 😡
+-- ChatGPT'd, dont blame me. 😡 waw
 
 local NotificationLib = {}
 NotificationLib.ActiveNotifications = {}  -- Holds all active notifications
@@ -9,24 +9,22 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
--- Repositions notifications so the newest is at the bottom, pushing older ones upward.
+-- Repositions notifications so that the oldest is at the bottom and each new notification stacks above.
 function NotificationLib:RepositionNotifications()
-    -- We anchor to bottom-left, so baseY is negative from the bottom edge.
     local baseX = 10
-    local baseY = -10
+    local baseY = -10       -- bottom offset (from screen bottom)
     local gap = 5
     local notifHeight = 70
 
-    -- The array is in order [1 = newest, 2 = older, etc.].
-    -- i=1 => offset = -10 (lowest on the screen),
-    -- i=2 => offset = -10 - (notifHeight + gap), etc.
+    -- Notifications are stored in order of creation: first is oldest, last is newest.
     for i, notif in ipairs(self.ActiveNotifications) do
+        -- The first notification (oldest) sits at baseY; each subsequent one is shifted upward.
         local offset = baseY - ((i - 1) * (notifHeight + gap))
         notif.Position = UDim2.new(0, baseX, 1, offset)
     end
 end
 
--- Removes a notification from the list, repositions the rest.
+-- Removes a notification from the active list and repositions the rest.
 function NotificationLib:RemoveNotification(notificationFrame)
     for i, notif in ipairs(self.ActiveNotifications) do
         if notif == notificationFrame then
@@ -37,11 +35,12 @@ function NotificationLib:RemoveNotification(notificationFrame)
     self:RepositionNotifications()
 end
 
+-- Creates a smooth notification.
 function NotificationLib:MakeNotification(params)
     local name = params.Name or "Notification"
     local content = params.Content or ""
     local image = params.Image or "rbxassetid://4483345998"
-    local duration = params.Time  -- if nil, it's permanent
+    local duration = params.Time  -- if nil, notification is permanent
 
     -- If duration is nil, check if a permanent notification is already active.
     if duration == nil then
@@ -53,41 +52,38 @@ function NotificationLib:MakeNotification(params)
         end
     end
 
-    -- Create a ScreenGui (one per notification for simplicity)
+    -- Create a new ScreenGui for this notification.
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "NotificationGUI"
     screenGui.Parent = player:WaitForChild("PlayerGui")
 
-    -- Create the main Frame
+    -- Create the main notification frame.
     local notificationFrame = Instance.new("Frame")
     notificationFrame.Name = "NotificationFrame"
     notificationFrame.Size = UDim2.new(0, 300, 0, 70)
-    -- Bottom-left anchor
-    notificationFrame.AnchorPoint = Vector2.new(0, 1)
-    -- Temporary position; will be updated by RepositionNotifications
-    notificationFrame.Position = UDim2.new(0, 10, 1, -10)
+    notificationFrame.AnchorPoint = Vector2.new(0, 1)  -- anchored at bottom-left
+    notificationFrame.Position = UDim2.new(0, 10, 1, -10)  -- initial (will be repositioned)
     notificationFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     notificationFrame.BackgroundTransparency = 1
     notificationFrame.BorderSizePixel = 0
     notificationFrame.Parent = screenGui
 
-    -- Mark permanent if no duration
     if duration == nil then
         notificationFrame:SetAttribute("Permanent", true)
     end
 
-    -- Rounded corners
+    -- Add rounded corners.
     local uiCorner = Instance.new("UICorner")
     uiCorner.CornerRadius = UDim.new(0, 8)
     uiCorner.Parent = notificationFrame
 
-    -- Blue outline
+    -- Blue outline.
     local notificationStroke = Instance.new("UIStroke")
     notificationStroke.Color = Color3.fromRGB(0, 0, 255)
     notificationStroke.Thickness = 2
     notificationStroke.Parent = notificationFrame
 
-    -- Title Label
+    -- Title label.
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(1, -40, 0, 19)
     titleLabel.Position = UDim2.new(0, 5, 0, 5)
@@ -102,7 +98,7 @@ function NotificationLib:MakeNotification(params)
     titleLabel.TextTransparency = 1
     titleLabel.Parent = notificationFrame
 
-    -- Message Label
+    -- Message label.
     local messageLabel = Instance.new("TextLabel")
     messageLabel.Size = UDim2.new(1, -40, 0, 40)
     messageLabel.Position = UDim2.new(0, 5, 0, 26)
@@ -119,7 +115,7 @@ function NotificationLib:MakeNotification(params)
     messageLabel.TextTransparency = 1
     messageLabel.Parent = notificationFrame
 
-    -- Image (top-right corner)
+    -- Image in the top-right corner.
     local imageLabel = Instance.new("ImageLabel")
     imageLabel.Size = UDim2.new(0, 24, 0, 24)
     imageLabel.Position = UDim2.new(1, -28, 0, 4)
@@ -128,10 +124,10 @@ function NotificationLib:MakeNotification(params)
     imageLabel.ImageTransparency = 1
     imageLabel.Parent = notificationFrame
 
-    -- Close Button (bottom-right corner, red "X")
+    -- Dismiss ("X") button in the bottom-right corner (red color).
     local closeButton = Instance.new("TextButton")
     closeButton.Size = UDim2.new(0, 20, 0, 20)
-    closeButton.Position = UDim2.new(1, -25, 1, -25) -- bottom-right corner
+    closeButton.Position = UDim2.new(1, -25, 1, -25)
     closeButton.BackgroundTransparency = 1
     closeButton.Text = "X"
     closeButton.TextColor3 = Color3.fromRGB(255, 0, 0)  -- red color
@@ -140,9 +136,7 @@ function NotificationLib:MakeNotification(params)
     closeButton.TextTransparency = 1
     closeButton.Parent = notificationFrame
 
-    -- Close Button click event
     closeButton.MouseButton1Click:Connect(function()
-        -- Manually remove this notification
         local tweenInfoOut = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
         TweenService:Create(notificationFrame, tweenInfoOut, {BackgroundTransparency = 1}):Play()
         TweenService:Create(titleLabel, tweenInfoOut, {TextTransparency = 1}):Play()
@@ -151,14 +145,14 @@ function NotificationLib:MakeNotification(params)
         TweenService:Create(closeButton, tweenInfoOut, {TextTransparency = 1}):Play()
         task.wait(0.5)
         screenGui:Destroy()
-        self:RemoveNotification(notificationFrame)
+        NotificationLib:RemoveNotification(notificationFrame)
     end)
 
-    -- Insert the new notification at index 1 (the "bottom" in the array)
-    table.insert(self.ActiveNotifications, 1, notificationFrame)
-    self:RepositionNotifications()
+    -- Insert the new notification at the end (so it appears above existing ones).
+    table.insert(NotificationLib.ActiveNotifications, notificationFrame)
+    NotificationLib:RepositionNotifications()
 
-    -- Tween In
+    -- Tween In (fade in).
     local tweenInfoIn = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     TweenService:Create(notificationFrame, tweenInfoIn, {BackgroundTransparency = 0.3}):Play()
     TweenService:Create(titleLabel, tweenInfoIn, {TextTransparency = 0}):Play()
@@ -166,7 +160,7 @@ function NotificationLib:MakeNotification(params)
     TweenService:Create(imageLabel, tweenInfoIn, {ImageTransparency = 0}):Play()
     TweenService:Create(closeButton, tweenInfoIn, {TextTransparency = 0}):Play()
 
-    -- Auto-remove if duration is provided
+    -- Auto-remove if duration is provided.
     if duration ~= nil then
         task.delay(duration, function()
             local tweenInfoOut = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
@@ -175,10 +169,9 @@ function NotificationLib:MakeNotification(params)
             TweenService:Create(messageLabel, tweenInfoOut, {TextTransparency = 1}):Play()
             TweenService:Create(imageLabel, tweenInfoOut, {ImageTransparency = 1}):Play()
             TweenService:Create(closeButton, tweenInfoOut, {TextTransparency = 1}):Play()
-
             task.wait(0.5)
             screenGui:Destroy()
-            self:RemoveNotification(notificationFrame)
+            NotificationLib:RemoveNotification(notificationFrame)
         end)
     end
 
