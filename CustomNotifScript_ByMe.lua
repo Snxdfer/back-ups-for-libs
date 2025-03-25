@@ -1,17 +1,48 @@
 -- ChatGPT'd, dont blame me. 😡
 
 local NotificationLib = {}
+NotificationLib.ActiveNotifications = {}
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+function NotificationLib:RepositionNotifications()
+    local baseX = 10
+    local baseY = -10
+    local gap = 5
+    local notifHeight = 70
+    local count = #self.ActiveNotifications
+    for i, notif in ipairs(self.ActiveNotifications) do
+        local offset = baseY - ((count - i) * (notifHeight + gap))
+        notif.Position = UDim2.new(0, baseX, 1, offset)
+    end
+end
+
+function NotificationLib:RemoveNotification(notificationFrame)
+    for i, notif in ipairs(self.ActiveNotifications) do
+        if notif == notificationFrame then
+            table.remove(self.ActiveNotifications, i)
+            break
+        end
+    end
+    self:RepositionNotifications()
+end
 
 function NotificationLib:MakeNotification(params)
     local name = params.Name or "Notification"
     local content = params.Content or ""
     local image = params.Image or "rbxassetid://4483345998"
-    local duration = params.Time or 5
+    local duration = params.Time
 
-    local Players = game:GetService("Players")
-    local TweenService = game:GetService("TweenService")
-    local player = Players.LocalPlayer
-    local camera = workspace.CurrentCamera
+    if duration == nil then
+        for _, notif in ipairs(self.ActiveNotifications) do
+            if notif:IsA("Frame") and notif:GetAttribute("Permanent") == true then
+                return
+            end
+        end
+    end
 
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "NotificationGUI"
@@ -26,7 +57,11 @@ function NotificationLib:MakeNotification(params)
     notificationFrame.BackgroundTransparency = 1
     notificationFrame.BorderSizePixel = 0
     notificationFrame.Parent = screenGui
-  
+
+    if duration == nil then
+        notificationFrame:SetAttribute("Permanent", true)
+    end
+
     local uiCorner = Instance.new("UICorner")
     uiCorner.CornerRadius = UDim.new(0, 8)
     uiCorner.Parent = notificationFrame
@@ -74,38 +109,29 @@ function NotificationLib:MakeNotification(params)
     imageLabel.ImageTransparency = 1
     imageLabel.Parent = notificationFrame
 
-    local function updateNotificationPosition()
-        local screenSize = camera.ViewportSize
-    end
-    camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateNotificationPosition)
-    updateNotificationPosition()
+    table.insert(NotificationLib.ActiveNotifications, notificationFrame)
+    NotificationLib:RepositionNotifications()
 
     local tweenInfoIn = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-    local fadeInFrame = TweenService:Create(notificationFrame, tweenInfoIn, {BackgroundTransparency = 0.3})
-    local fadeInTitle = TweenService:Create(titleLabel, tweenInfoIn, {TextTransparency = 0})
-    local fadeInMessage = TweenService:Create(messageLabel, tweenInfoIn, {TextTransparency = 0})
-    local fadeInImage = TweenService:Create(imageLabel, tweenInfoIn, {ImageTransparency = 0})
+    TweenService:Create(notificationFrame, tweenInfoIn, {BackgroundTransparency = 0.3}):Play()
+    TweenService:Create(titleLabel, tweenInfoIn, {TextTransparency = 0}):Play()
+    TweenService:Create(messageLabel, tweenInfoIn, {TextTransparency = 0}):Play()
+    TweenService:Create(imageLabel, tweenInfoIn, {ImageTransparency = 0}):Play()
 
-    fadeInFrame:Play()
-    fadeInTitle:Play()
-    fadeInMessage:Play()
-    fadeInImage:Play()
+    if duration ~= nil then
+        task.delay(duration, function()
+            local tweenInfoOut = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+            TweenService:Create(notificationFrame, tweenInfoOut, {BackgroundTransparency = 1}):Play()
+            TweenService:Create(titleLabel, tweenInfoOut, {TextTransparency = 1}):Play()
+            TweenService:Create(messageLabel, tweenInfoOut, {TextTransparency = 1}):Play()
+            TweenService:Create(imageLabel, tweenInfoOut, {ImageTransparency = 1}):Play()
+            task.wait(0.5)
+            screenGui:Destroy()
+            NotificationLib:RemoveNotification(notificationFrame)
+        end)
+    end
 
-    task.wait(duration)
-
-    local tweenInfoOut = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-    local fadeOutFrame = TweenService:Create(notificationFrame, tweenInfoOut, {BackgroundTransparency = 1})
-    local fadeOutTitle = TweenService:Create(titleLabel, tweenInfoOut, {TextTransparency = 1})
-    local fadeOutMessage = TweenService:Create(messageLabel, tweenInfoOut, {TextTransparency = 1})
-    local fadeOutImage = TweenService:Create(imageLabel, tweenInfoOut, {ImageTransparency = 1})
-
-    fadeOutFrame:Play()
-    fadeOutTitle:Play()
-    fadeOutMessage:Play()
-    fadeOutImage:Play()
-    task.wait(0.5)
-
-    screenGui:Destroy()
+    return notificationFrame
 end
 
 return NotificationLib
