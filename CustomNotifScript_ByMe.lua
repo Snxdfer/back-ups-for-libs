@@ -1,4 +1,4 @@
--- ChatGPT'd, dont blame me. 😡
+-- ChatGPT'd, dont blame me. 😡w.
 
 local NotificationLib = {}
 NotificationLib.ActiveNotifications = {}
@@ -10,13 +10,13 @@ local camera = workspace.CurrentCamera
 
 function NotificationLib:RepositionNotifications()
     local baseX = 10
-    local baseY = -10
+    local baseY = 10
     local gap = 5
     local notifHeight = 70
-    local count = #self.ActiveNotifications
+
     for i, notif in ipairs(self.ActiveNotifications) do
-        local offset = baseY - ((count - i) * (notifHeight + gap))
-        notif.Position = UDim2.new(0, baseX, 1, offset)
+        local offset = baseY + (i - 1) * (notifHeight + gap)
+        notif.Position = UDim2.new(0, baseX, 0, offset)
     end
 end
 
@@ -38,7 +38,7 @@ function NotificationLib:MakeNotification(params)
 
     if duration == nil then
         for _, notif in ipairs(self.ActiveNotifications) do
-            if notif:IsA("Frame") and notif:GetAttribute("Permanent") == true then
+            if notif:GetAttribute("Permanent") == true then
                 return
             end
         end
@@ -51,8 +51,8 @@ function NotificationLib:MakeNotification(params)
     local notificationFrame = Instance.new("Frame")
     notificationFrame.Name = "NotificationFrame"
     notificationFrame.Size = UDim2.new(0, 300, 0, 70)
-    notificationFrame.AnchorPoint = Vector2.new(0, 1)
-    notificationFrame.Position = UDim2.new(0, 10, 1, -10)
+    notificationFrame.AnchorPoint = Vector2.new(0, 0)
+    notificationFrame.Position = UDim2.new(0, 10, 0, 10)
     notificationFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     notificationFrame.BackgroundTransparency = 1
     notificationFrame.BorderSizePixel = 0
@@ -66,6 +66,7 @@ function NotificationLib:MakeNotification(params)
     uiCorner.CornerRadius = UDim.new(0, 8)
     uiCorner.Parent = notificationFrame
 
+
     local notificationStroke = Instance.new("UIStroke")
     notificationStroke.Color = Color3.fromRGB(0, 0, 255)
     notificationStroke.Thickness = 2
@@ -73,7 +74,7 @@ function NotificationLib:MakeNotification(params)
 
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(1, -40, 0, 19)
-    titleLabel.Position = UDim2.new(0.001, 5, -0.02, 5)
+    titleLabel.Position = UDim2.new(0, 5, 0, 5)
     titleLabel.BackgroundTransparency = 1
     titleLabel.TextScaled = true
     titleLabel.Font = Enum.Font.SourceSans
@@ -87,7 +88,7 @@ function NotificationLib:MakeNotification(params)
 
     local messageLabel = Instance.new("TextLabel")
     messageLabel.Size = UDim2.new(1, -40, 0, 40)
-    messageLabel.Position = UDim2.new(0.01, 5, 0, 26)
+    messageLabel.Position = UDim2.new(0, 5, 0, 26)
     messageLabel.BackgroundTransparency = 1
     messageLabel.TextScaled = true
     messageLabel.TextWrapped = true
@@ -109,14 +110,38 @@ function NotificationLib:MakeNotification(params)
     imageLabel.ImageTransparency = 1
     imageLabel.Parent = notificationFrame
 
-    table.insert(NotificationLib.ActiveNotifications, notificationFrame)
-    NotificationLib:RepositionNotifications()
+    local closeButton = Instance.new("TextButton")
+    closeButton.Size = UDim2.new(0, 20, 0, 20)
+    closeButton.Position = UDim2.new(1, -25, 1, -25)
+    closeButton.BackgroundTransparency = 1
+    closeButton.Text = "X"
+    closeButton.TextColor3 = Color3.fromRGB(255, 0, 0)
+    closeButton.Font = Enum.Font.SourceSansBold
+    closeButton.TextScaled = true
+    closeButton.TextTransparency = 1
+    closeButton.Parent = notificationFrame
+
+    closeButton.MouseButton1Click:Connect(function()
+        local tweenInfoOut = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+        TweenService:Create(notificationFrame, tweenInfoOut, {BackgroundTransparency = 1}):Play()
+        TweenService:Create(titleLabel, tweenInfoOut, {TextTransparency = 1}):Play()
+        TweenService:Create(messageLabel, tweenInfoOut, {TextTransparency = 1}):Play()
+        TweenService:Create(imageLabel, tweenInfoOut, {ImageTransparency = 1}):Play()
+        TweenService:Create(closeButton, tweenInfoOut, {TextTransparency = 1}):Play()
+        task.wait(0.5)
+        screenGui:Destroy()
+        self:RemoveNotification(notificationFrame)
+    end)
+
+    table.insert(self.ActiveNotifications, 1, notificationFrame)
+    self:RepositionNotifications()
 
     local tweenInfoIn = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     TweenService:Create(notificationFrame, tweenInfoIn, {BackgroundTransparency = 0.3}):Play()
     TweenService:Create(titleLabel, tweenInfoIn, {TextTransparency = 0}):Play()
     TweenService:Create(messageLabel, tweenInfoIn, {TextTransparency = 0}):Play()
     TweenService:Create(imageLabel, tweenInfoIn, {ImageTransparency = 0}):Play()
+    TweenService:Create(closeButton, tweenInfoIn, {TextTransparency = 0}):Play()
 
     if duration ~= nil then
         task.delay(duration, function()
@@ -125,9 +150,11 @@ function NotificationLib:MakeNotification(params)
             TweenService:Create(titleLabel, tweenInfoOut, {TextTransparency = 1}):Play()
             TweenService:Create(messageLabel, tweenInfoOut, {TextTransparency = 1}):Play()
             TweenService:Create(imageLabel, tweenInfoOut, {ImageTransparency = 1}):Play()
+            TweenService:Create(closeButton, tweenInfoOut, {TextTransparency = 1}):Play()
+
             task.wait(0.5)
             screenGui:Destroy()
-            NotificationLib:RemoveNotification(notificationFrame)
+            self:RemoveNotification(notificationFrame)
         end)
     end
 
