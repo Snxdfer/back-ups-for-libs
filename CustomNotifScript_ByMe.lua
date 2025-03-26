@@ -9,16 +9,16 @@ local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
--- Repositions notifications so that the oldest is at the bottom and each new notification stacks above.
+-- Repositions notifications so that the newest is at the bottom and older ones are pushed upward.
 function NotificationLib:RepositionNotifications()
     local baseX = 10
-    local baseY = -10       -- bottom offset (from screen bottom)
+    local baseY = -10       -- Offset from the bottom of the screen
     local gap = 5
     local notifHeight = 70
 
-    -- Notifications are stored in order of creation: first is oldest, last is newest.
+    -- ActiveNotifications is ordered with index 1 as the newest.
     for i, notif in ipairs(self.ActiveNotifications) do
-        -- The first notification (oldest) sits at baseY; each subsequent one is shifted upward.
+        -- The newest (i = 1) gets the base offset; each subsequent one is pushed upward.
         local offset = baseY - ((i - 1) * (notifHeight + gap))
         notif.Position = UDim2.new(0, baseX, 1, offset)
     end
@@ -62,7 +62,7 @@ function NotificationLib:MakeNotification(params)
     notificationFrame.Name = "NotificationFrame"
     notificationFrame.Size = UDim2.new(0, 300, 0, 70)
     notificationFrame.AnchorPoint = Vector2.new(0, 1)  -- anchored at bottom-left
-    notificationFrame.Position = UDim2.new(0, 10, 1, -10)  -- initial (will be repositioned)
+    notificationFrame.Position = UDim2.new(0, 10, 1, -10)  -- initial position; will be updated
     notificationFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     notificationFrame.BackgroundTransparency = 1
     notificationFrame.BorderSizePixel = 0
@@ -72,7 +72,7 @@ function NotificationLib:MakeNotification(params)
         notificationFrame:SetAttribute("Permanent", true)
     end
 
-    -- Add rounded corners.
+    -- Rounded corners.
     local uiCorner = Instance.new("UICorner")
     uiCorner.CornerRadius = UDim.new(0, 8)
     uiCorner.Parent = notificationFrame
@@ -124,7 +124,7 @@ function NotificationLib:MakeNotification(params)
     imageLabel.ImageTransparency = 1
     imageLabel.Parent = notificationFrame
 
-    -- Dismiss ("X") button in the bottom-right corner (red color).
+    -- Dismiss ("X") button in the bottom-right corner (red).
     local closeButton = Instance.new("TextButton")
     closeButton.Size = UDim2.new(0, 20, 0, 20)
     closeButton.Position = UDim2.new(1, -25, 1, -25)
@@ -148,11 +148,11 @@ function NotificationLib:MakeNotification(params)
         NotificationLib:RemoveNotification(notificationFrame)
     end)
 
-    -- Insert the new notification at the end (so it appears above existing ones).
-    table.insert(NotificationLib.ActiveNotifications, notificationFrame)
-    NotificationLib:RepositionNotifications()
+    -- Insert the new notification at the beginning of the ActiveNotifications table.
+    table.insert(self.ActiveNotifications, 1, notificationFrame)
+    self:RepositionNotifications()
 
-    -- Tween In (fade in).
+    -- Tween In.
     local tweenInfoIn = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     TweenService:Create(notificationFrame, tweenInfoIn, {BackgroundTransparency = 0.3}):Play()
     TweenService:Create(titleLabel, tweenInfoIn, {TextTransparency = 0}):Play()
