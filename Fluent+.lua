@@ -3225,7 +3225,7 @@ Components.Window = (function()
 				end
 			end
 		end
-	end
+	end)
 
 		function Window:Destroy()
 			if Library.UseAcrylic then
