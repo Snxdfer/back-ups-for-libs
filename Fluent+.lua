@@ -29,15 +29,6 @@ else
 	Mobile = table.find({Enum.Platform.IOS, Enum.Platform.Android}, UserInputService:GetPlatform()) ~= nil
 end
 
-if Show_Button then
-	Mobile = true
-end
-
-local Asset = "rbxassetid://"
-if Game.GameId == 5750914919 then
-	Asset = ""
-end
-
 print(Fluent_Version)
 
 local ProtectGui = protectgui or (syn and syn.protect_gui) or function() end
@@ -3233,23 +3224,13 @@ Components.Window = (function()
 			if not MinimizeNotif then
 				MinimizeNotif = true
 				local Key = Library.MinimizeKeybind and Library.MinimizeKeybind.Value or Library.MinimizeKey.Name
-				if not Mobile then Library:Notify({
+				Library:Notify({
 					Title = "Interface",
 					Content = "Press " .. Key .. " to toggle the interface.",
 					Duration = 6
 					})
-				else 
-					Library:Notify({
-						Title = "Interface (Mobile)",
-						Content = "Tap to the button to toggle the interface.",
-						Duration = 6
-					})
 				end
 			end
-			if not RunService:IsStudio() then
-				pcall(SwapIco)
-			end
-		end
 
 		function Window:Destroy()
 			if Library.UseAcrylic then
