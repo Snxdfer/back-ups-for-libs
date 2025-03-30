@@ -9,6 +9,7 @@
 ]]--
 
 ----------------------> Locals <-----------------------
+local Fluent_Version = "1.2.2"
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local LocalPlayer = game:GetService("Players").LocalPlayer
@@ -20,6 +21,8 @@ local Mouse = LocalPlayer:GetMouse()
 local httpService = game:GetService("HttpService")
 local RenderStepped = RunService.RenderStepped
 -------------------------------------------------------
+
+print(Fluent_Version)
 
 local ProtectGui = protectgui or (syn and syn.protect_gui) or function() end
 
