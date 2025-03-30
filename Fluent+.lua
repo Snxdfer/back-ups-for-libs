@@ -3217,7 +3217,7 @@ Components.Window = (function()
 			if not MinimizeNotif then
 				MinimizeNotif = true
 				local Key = Library.MinimizeKeybind and Library.MinimizeKeybind.Value or Library.MinimizeKey.Name
-				Library:Notify({
+				if not Mobile then Library:Notify({
 					Title = "Interface",
 					Content = "Press " .. Key .. " to toggle the interface.",
 					Duration = 6
@@ -3225,7 +3225,6 @@ Components.Window = (function()
 				end
 			end
 		end
-	end)
 
 		function Window:Destroy()
 			if Library.UseAcrylic then
@@ -3233,7 +3232,6 @@ Components.Window = (function()
 			end
 			Window.Root:Destroy()
 		end
-	end
 
 		local DialogModule = Components.Dialog:Init(Window)
 		function Window:Dialog(Config)
