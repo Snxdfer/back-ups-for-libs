@@ -1,15 +1,15 @@
 --[[
-  ______ _                  _            __   ___    ___  
- |  ____| |                | |     _    /_ | |__ \  |__ \ 
- | |__  | |_   _  ___ _ __ | |_  _| |_   | |    ) |    ) |
- |  __| | | | | |/ _ \ '_ \| __||_   _|  | |   / /    / / 
- | |    | | |_| |  __/ | | | |_   |_|    | |_ / /_ _ / /_ 
- |_|    |_|\__,_|\___|_| |_|\__|         |_(_)____(_)____|
+  ______ _                  _            __   ___    ____  
+ |  ____| |                | |     _    /_ | |__ \  |___ \ 
+ | |__  | |_   _  ___ _ __ | |_  _| |_   | |    ) |   __) |
+ |  __| | | | | |/ _ \ '_ \| __||_   _|  | |   / /   |__ < 
+ | |    | | |_| |  __/ | | | |_   |_|    | |_ / /_ _ ___) |
+ |_|    |_|\__,_|\___|_| |_|\__|         |_(_)____(_)____/ 
 
 ]]--
 
 ----------------------> Locals <-----------------------
-local Fluent_Version = "1.2.2"
+local Fluent_Version = "1.2.3"
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local LocalPlayer = game:GetService("Players").LocalPlayer
@@ -20,6 +20,7 @@ local Camera = game:GetService("Workspace").CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
 local httpService = game:GetService("HttpService")
 local RenderStepped = RunService.RenderStepped
+local Asset = "rbxassetid://"
 local Mobile
 -------------------------------------------------------
 
@@ -3224,14 +3225,13 @@ Components.Window = (function()
 			if not MinimizeNotif then
 				MinimizeNotif = true
 				local Key = Library.MinimizeKeybind and Library.MinimizeKeybind.Value or Library.MinimizeKey.Name
-				if not Mobile then Library:Notify({
+				Library:Notify({
 					Title = "Interface",
 					Content = "Press " .. Key .. " to toggle the interface.",
 					Duration = 6
 					})
 				end
 			end
-		end
 
 		function Window:Destroy()
 			if Library.UseAcrylic then
