@@ -3222,6 +3222,7 @@ Components.Window = (function()
 				end
 			end
 		end
+	end
 
 		function Window:Destroy()
 			if Library.UseAcrylic then
@@ -3229,6 +3230,7 @@ Components.Window = (function()
 			end
 			Window.Root:Destroy()
 		end
+	end
 
 		local DialogModule = Components.Dialog:Init(Window)
 		function Window:Dialog(Config)
