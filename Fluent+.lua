@@ -20,7 +20,23 @@ local Camera = game:GetService("Workspace").CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
 local httpService = game:GetService("HttpService")
 local RenderStepped = RunService.RenderStepped
+local Mobile
 -------------------------------------------------------
+
+if RunService:IsStudio() then
+	Mobile = false
+else
+	Mobile = table.find({Enum.Platform.IOS, Enum.Platform.Android}, UserInputService:GetPlatform()) ~= nil
+end
+
+if Show_Button then
+	Mobile = true
+end
+
+local Asset = "rbxassetid://"
+if Game.GameId == 5750914919 then
+	Asset = ""
+end
 
 print(Fluent_Version)
 
@@ -3222,7 +3238,16 @@ Components.Window = (function()
 					Content = "Press " .. Key .. " to toggle the interface.",
 					Duration = 6
 					})
+				else 
+					Library:Notify({
+						Title = "Interface (Mobile)",
+						Content = "Tap to the button to toggle the interface.",
+						Duration = 6
+					})
 				end
+			end
+			if not RunService:IsStudio() then
+				pcall(SwapIco)
 			end
 		end
 
@@ -5825,6 +5850,16 @@ end
 
 Library.Elements = Elements
 
+if RunService:IsStudio() then
+	makefolder = function(...) return ... end;
+	makefile = function(...) return ... end;
+	isfile = function(...) return ... end;
+	isfolder = function(...) return ... end;
+	readfile = function(...) return ... end;
+	writefile = function(...) return ... end;
+	listfiles = function (...) return {...} end;
+end
+
 local SaveManager = {} do
 	SaveManager.Folder = "FluentSettings"
 	SaveManager.Ignore = {}
@@ -5931,6 +5966,30 @@ local SaveManager = {} do
 		return true
 	end
 
+	if not RunService:IsStudio() then
+		function SaveManager:Load(name)
+			if (not name) then
+				return false, "no config file is selected"
+			end
+
+			local file = self.Folder .. "/" .. name .. ".json"
+			if not isfile(file) then return false, "Create Config Save File" end
+
+			local success, decoded = pcall(httpService.JSONDecode, httpService, readfile(file))
+			if not success then return false, "decode error" end
+
+			for _, option in next, decoded.objects do
+				if self.Parser[option.type] and not self.Ignore[option.idx] then
+					task.spawn(function() self.Parser[option.type].Load(option.idx, option) end) -- task.spawn() so the config loading wont get stuck.
+				end
+			end
+
+			Fluent.SettingLoaded = true
+
+			return true, decoded
+		end
+	end
+
 	function SaveManager:IgnoreThemeSettings()
 		self:SetIgnoreIndexes({ 
 			"InterfaceTheme", "AcrylicToggle", "TransparentToggle", "MenuKeybind"
@@ -5982,6 +6041,31 @@ local SaveManager = {} do
 	function SaveManager:SetLibrary(library)
 		self.Library = library
 		self.Options = library.Options
+	end
+
+	if not RunService:IsStudio() then
+		function SaveManager:LoadAutoloadConfig()
+			if isfile(self.Folder .. "/autoload.txt") then
+				local name = readfile(self.Folder .. "/autoload.txt")
+
+				local success, err = self:Load(name)
+				if not success then
+					return self.Library:Notify({
+						Title = "Interface",
+						Content = "Config loader",
+						SubContent = "Failed to load autoload config: " .. err,
+						Duration = 7
+					})
+				end
+
+				self.Library:Notify({
+					Title = "Interface",
+					Content = "Config loader",
+					SubContent = string.format("Auto loaded config %q", name),
+					Duration = 7
+				})
+			end
+		end
 	end
 
 	function SaveManager:BuildConfigSection(tab)
@@ -6094,6 +6178,10 @@ local SaveManager = {} do
 		end
 
 		SaveManager:SetIgnoreIndexes({ "SaveManager_ConfigList", "SaveManager_ConfigName" })
+	end
+
+	if not RunService:IsStudio() then
+		SaveManager:BuildFolderTree()
 	end
 end
 
@@ -6300,4 +6388,4 @@ else
 	Fluent = Library
 end
 
-return Library, SaveManager, InterfaceManager
+return Library, SaveManager, InterfaceManager, Mobile
