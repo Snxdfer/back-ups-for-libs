@@ -19,11 +19,14 @@ local TextService = game:GetService("TextService")
 local Camera = game:GetService("Workspace").CurrentCamera
 local Mouse = LocalPlayer:GetMouse()
 local httpService = game:GetService("HttpService")
-local RenderStepped = RunService.RenderStepped
-local Asset = "rbxassetid://"
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 -------------------------------------------------------
 
 print(Fluent_Version)
+
+local Asset = "rbxassetid://"
+local RenderStepped = RunService.RenderStepped
 
 local ProtectGui = protectgui or (syn and syn.protect_gui) or function() end
 
@@ -756,7 +759,7 @@ local Themes = {
 }
 
 local Library = {
-	Version = "1.2.2",
+	Version = "1.2.3",
 
 	OpenFrames = {},
 	Options = {},
