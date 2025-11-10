@@ -1,78 +1,130 @@
--- ChatGPT'd, dont blame me. 😡 au
-
 local NotificationLib = {}
 local TweenService = game:GetService("TweenService")
+local Players      = game:GetService("Players")
+local player       = Players.LocalPlayer
+local playerGui    = player:WaitForChild("PlayerGui")
 
-local notifications = {} -- Table to store active notifications
-local notificationSpacing = 10 -- Space between notifications
+local SCREEN_GUI_NAME = "ExecutorNotificationSystem"
+
+local screenGui = playerGui:FindFirstChild(SCREEN_GUI_NAME)
+if not screenGui then
+    screenGui = Instance.new("ScreenGui")
+    screenGui.Name = SCREEN_GUI_NAME
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = playerGui
+end
+
+local template = screenGui:FindFirstChild("Template")
+if not template then
+    template = Instance.new("Frame")
+    template.Name = "Template"
+    template.Size = UDim2.new(0, 310, 0, 80)
+    template.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    template.BorderSizePixel = 0
+    template.Visible = false
+    template.Parent = screenGui
+
+    local corner = Instance.new("UICorner", template)
+    corner.CornerRadius = UDim.new(0, 8)
+
+    local icon = Instance.new("ImageLabel", template)
+    icon.Name = "Icon"
+    icon.Size = UDim2.new(0, 48, 0, 48)
+    icon.Position = UDim2.new(0, 12, 0.5, -24)
+    icon.BackgroundTransparency = 1
+    icon.Image = ""
+
+    local title = Instance.new("TextLabel", template)
+    title.Name = "Title"
+    title.Size = UDim2.new(1, -70, 0, 24)
+    title.Position = UDim2.new(0, 70, 0, 10)
+    title.BackgroundTransparency = 1
+    title.TextColor3 = Color3.new(1,1,1)
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 16
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Text = ""
+
+    local desc = Instance.new("TextLabel", template)
+    desc.Name = "Description"
+    desc.Size = UDim2.new(1, -70, 0, 36)
+    desc.Position = UDim2.new(0, 70, 0, 34)
+    desc.BackgroundTransparency = 1
+    desc.TextColor3 = Color3.new(0.8,0.8,0.8)
+    desc.Font = Enum.Font.Gotham
+    desc.TextSize = 14
+    desc.TextWrapped = true
+    desc.TextXAlignment = Enum.TextXAlignment.Left
+    desc.Text = ""
+end
+
+local notifications = {}
+local notificationSpacing = 10
+local NOTIF_WIDTH = 310
+local NOTIF_HEIGHT = 80
+
+local function repositionAll()
+    for i, notif in ipairs(notifications) do
+        local yOffset = (i - 1) * (NOTIF_HEIGHT + notificationSpacing) + 50
+        local target = UDim2.new(1, -NOTIF_WIDTH-10, 1, -yOffset)
+        TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Position = target}):Play()
+    end
+end
 
 function NotificationLib:MakeNotification(data)
     task.spawn(function()
         data = {
-            Name = data.Name or "Notification",
-            Content = data.Content or "No Content",
-            Image = data.Image or "",
-            Time = data.Time or 3
+            Name    = data.Name    or "Notification",
+            Content = data.Content or "No content",
+            Image   = data.Image   or "",
+            Time    = data.Time    or 3,
         }
 
-        local newNotification = script.Template:Clone()
-        newNotification.Parent = script.Parent
-        newNotification.Visible = false
-        newNotification.Name = data.Name
-        newNotification.Title.Text = data.Name
-        newNotification.Description.Text = data.Content
-        newNotification.Icon.Image = data.Image
-        
-        -- Set initial transparency
-        newNotification.BackgroundTransparency = 1
-        newNotification.Title.TextTransparency = 1
-        newNotification.Description.TextTransparency = 1
-        newNotification.Icon.ImageTransparency = 1
+        local notif = template:Clone()
+        notif.Parent = screenGui
+        notif.Name   = data.Name
+        notif.Title.Text = data.Name
+        notif.Description.Text = data.Content
+        notif.Icon.Image = data.Image
 
-        -- Insert into notifications table
-        table.insert(notifications, 1, newNotification)
+        notif.BackgroundTransparency = 1
+        notif.Title.TextTransparency = 1
+        notif.Description.TextTransparency = 1
+        notif.Icon.ImageTransparency = 1
 
-        -- Reposition notifications smoothly
-        for i, notification in ipairs(notifications) do
-            local targetPosition = UDim2.new(1, -320, 1, -((i - 1) * (newNotification.Size.Y.Offset + notificationSpacing) + 50))
-            TweenService:Create(notification, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Position = targetPosition}):Play()
-        end
+        table.insert(notifications, 1, notif)
 
-        -- Show animation
-        newNotification.Position = UDim2.new(1, -320, 1, 100) -- Start from offscreen
-        newNotification.Visible = true
-        TweenService:Create(newNotification, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.45}):Play()
-        TweenService:Create(newNotification.Title, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
-        TweenService:Create(newNotification.Description, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
-        TweenService:Create(newNotification.Icon, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 0}):Play()
+        notif.Position = UDim2.new(1, -NOTIF_WIDTH-10, 1, 100)
+        notif.Visible = true
 
-        -- Wait for the specified duration
+        TweenService:Create(notif, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.45}):Play()
+        TweenService:Create(notif.Title, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+        TweenService:Create(notif.Description, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+        TweenService:Create(notif.Icon, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 0}):Play()
+
+        repositionAll()
+
         task.wait(data.Time)
 
-        -- Hide animation
-        TweenService:Create(newNotification, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundTransparency = 1}):Play()
-        TweenService:Create(newNotification.Title, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
-        TweenService:Create(newNotification.Description, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
-        TweenService:Create(newNotification.Icon, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+        TweenService:Create(notif, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundTransparency = 1}):Play()
+        TweenService:Create(notif.Title, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
+        TweenService:Create(notif.Description, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
+        TweenService:Create(notif.Icon, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
 
         task.wait(0.4)
 
-        -- Remove from table and destroy
-        for i, notification in ipairs(notifications) do
-            if notification == newNotification then
+        for i, n in ipairs(notifications) do
+            if n == notif then
                 table.remove(notifications, i)
                 break
             end
         end
+        notif:Destroy()
 
-        newNotification:Destroy()
-
-        -- Reposition remaining notifications
-        for i, notification in ipairs(notifications) do
-            local targetPosition = UDim2.new(1, -320, 1, -((i - 1) * (newNotification.Size.Y.Offset + notificationSpacing) + 50))
-            TweenService:Create(notification, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Position = targetPosition}):Play()
-        end
+        repositionAll()
     end)
 end
+
+NotificationLib.Parent = screenGui
 
 return NotificationLib
