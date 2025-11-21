@@ -1,166 +1,178 @@
 local NotificationLib = {}
 NotificationLib.ActiveNotifications = {}
 
+local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local SoundService = game:GetService("SoundService")
-
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "ExecutorNotifications"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = game:GetService("CoreGui")
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
 
 function NotificationLib:RepositionNotifications()
-    local padding = 10
-    local gap = 8
-    local height = 70
+    local baseX = 10
+    local baseY = -10
+    local gap = 5
+    local notifHeight = 70
 
-    for i, data in ipairs(self.ActiveNotifications) do
-        local frame = data.Frame
-        local targetY = -(padding + (i - 1) * (height + gap))
-
-        local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-        local tween = TweenService:Create(frame, tweenInfo, {
-            Position = UDim2.new(1, 20, 1, targetY)
+    for i, notif in ipairs(self.ActiveNotifications) do
+        local offset = baseY - ((i - 1) * (notifHeight + gap))
+        local tween = TweenService:Create(notif, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {
+            Position = UDim2.new(0, baseX, 1, offset)
         })
-        data.Tween = tween
         tween:Play()
     end
 end
 
-function NotificationLib:RemoveNotification(frame)
-    for i, data in ipairs(self.ActiveNotifications) do
-        if data.Frame == frame then
+function NotificationLib:RemoveNotification(notificationFrame)
+    for i, notif in ipairs(self.ActiveNotifications) do
+        if notif == notificationFrame then
             table.remove(self.ActiveNotifications, i)
-
-            local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-            local slideOut = TweenService:Create(frame, tweenInfo, {
-                Position = UDim2.new(1, 120, frame.Position.Y.Scale, frame.Position.Y.Offset),
-                BackgroundTransparency = 1
-            })
-
-            for _, child in ipairs(frame:GetChildren()) do
-                if child:IsA("GuiObject") then
-                    TweenService:Create(child, tweenInfo, {
-                        TextTransparency = 1,
-                        ImageTransparency = 1,
-                        BackgroundTransparency = 1
-                    }):Play()
-                end
-            end
-
-            slideOut:Play()
-            slideOut.Completed:Connect(function()
-                frame:Destroy()
-                self:RepositionNotifications()
-            end)
             break
         end
     end
+    self:RepositionNotifications()
 end
 
-function NotificationLib:MakeNotification(config)
-    config = config or {}
-
-    local name     = config.Name or "Notification"
-    local content  = config.Content or "No message."
-    local image    = config.Image or "rbxassetid://4483345998"
-    local duration = config.Time or config.Duration
-    local soundId  = config.SoundId
-    local volume   = config.Volume or 0.5
+function NotificationLib:MakeNotification(params)
+    local name = params.Name or "Notification"
+    local content = params.Content or ""
+    local image = params.Image or "rbxassetid://4483345998"
+    local duration = params.Time
+    local soundId = params.SoundId
+    local volume = params.Volume or 0.5
 
     if soundId then
         task.spawn(function()
             local sound = Instance.new("Sound")
             sound.SoundId = soundId
-            sound.Volume = math.clamp(volume, 0, 10)
+            sound.Volume = volume
             sound.Parent = SoundService
             sound:Play()
             sound.Ended:Connect(function() sound:Destroy() end)
         end)
     end
 
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 340, 0, 70)
-    frame.AnchorPoint = Vector2.new(1, 1)
-    frame.Position = UDim2.new(1, 120, 1, -10)
-    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    frame.BackgroundTransparency = 1
-    frame.ClipsDescendants = true
-    frame.Parent = screenGui
-
-    local corner = Instance.new("UICorner", frame)
-    corner.CornerRadius = UDim.new(0, 12)
-
-    local stroke = Instance.new("UIStroke", frame)
-    stroke.Color = Color3.fromRGB(0, 120, 255)
-    stroke.Thickness = 2
-    stroke.Transparency = 0.5
-
-    local title = Instance.new("TextLabel", frame)
-    title.Size = UDim2.new(1, -70, 0, 22)
-    title.Position = UDim2.new(0, 12, 0, 8)
-    title.BackgroundTransparency = 1
-    title.Text = name
-    title.TextColor3 = Color3.new(1, 1, 1)
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 16
-    title.TextTransparency = 1
-
-    local msg = Instance.new("TextLabel", frame)
-    msg.Size = UDim2.new(1, -70, 0, 34)
-    msg.Position = UDim2.new(0, 12, 0, 30)
-    msg.BackgroundTransparency = 1
-    msg.Text = content
-    msg.TextColor3 = Color3.fromRGB(200, 200, 200)
-    msg.TextXAlignment = Enum.TextXAlignment.Left
-    msg.TextYAlignment = Enum.TextYAlignment.Top
-    msg.TextWrapped = true
-    msg.Font = Enum.Font.Gotham
-    msg.TextSize = 14
-    msg.TextTransparency = 1
-
-    local icon = Instance.new("ImageLabel", frame)
-    icon.Size = UDim2.new(0, 36, 0, 36)
-    icon.Position = UDim2.new(1, -50, 0.5, 0)
-    icon.AnchorPoint = Vector2.new(0.5, 0.5)
-    icon.BackgroundTransparency = 1
-    icon.Image = image
-    icon.ImageTransparency = 1
-
-    if duration then
-        local close = Instance.new("TextButton", frame)
-        close.Size = UDim2.new(0, 24, 0, 24)
-        close.Position = UDim2.new(1, -34, 0, 8)
-        close.BackgroundTransparency = 1
-        close.Text = "×"
-        close.TextColor3 = Color3.fromRGB(255, 100, 100)
-        close.Font = Enum.Font.GothamBold
-        close.TextSize = 20
-        close.TextTransparency = 1
-        close.MouseButton1Click:Connect(function()
-            self:RemoveNotification(frame)
-        end)
+    if duration == nil then
+        for _, notif in ipairs(self.ActiveNotifications) do
+            if notif:GetAttribute("Permanent") == true then
+                return
+            end
+        end
     end
 
-    local tweenIn = TweenInfo.new(0.6, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-    TweenService:Create(frame, tweenIn, {BackgroundTransparency = 0.15}):Play()
-    TweenService:Create(title, tweenIn, {TextTransparency = 0}):Play()
-    TweenService:Create(msg, tweenIn, {TextTransparency = 0}):Play()
-    TweenService:Create(icon, tweenIn, {ImageTransparency = 0}):Play()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "NotificationGUI"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = game:GetService("CoreGui")
 
-    table.insert(self.ActiveNotifications, 1, {Frame = frame})
+    local notificationFrame = Instance.new("Frame")
+    notificationFrame.Name = "NotificationFrame"
+    notificationFrame.Size = UDim2.new(0, 300, 0, 70)
+    notificationFrame.AnchorPoint = Vector2.new(0, 1)
+    notificationFrame.Position = UDim2.new(0, -320, 1, -10)
+    notificationFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    notificationFrame.BackgroundTransparency = 1
+    notificationFrame.BorderSizePixel = 0
+    notificationFrame.Parent = screenGui
+
+    if duration == nil then
+        notificationFrame:SetAttribute("Permanent", true)
+    end
+
+    local uiCorner = Instance.new("UICorner")
+    uiCorner.CornerRadius = UDim.new(0, 8)
+    uiCorner.Parent = notificationFrame
+
+    local notificationStroke = Instance.new("UIStroke")
+    notificationStroke.Color = Color3.fromRGB(0, 0, 255)
+    notificationStroke.Thickness = 2
+    notificationStroke.Parent = notificationFrame
+
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, -40, 0, 19)
+    titleLabel.Position = UDim2.new(0, 5, 0, 5)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.TextScaled = true
+    titleLabel.Font = Enum.Font.SourceSans
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.RichText = true
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.TextYAlignment = Enum.TextYAlignment.Center
+    titleLabel.Text = tostring(name)
+    titleLabel.TextTransparency = 1
+    titleLabel.Parent = notificationFrame
+
+    local messageLabel = Instance.new("TextLabel")
+    messageLabel.Size = UDim2.new(1, -40, 0, 40)
+    messageLabel.Position = UDim2.new(0, 5, 0, 26)
+    messageLabel.BackgroundTransparency = 1
+    messageLabel.TextScaled = true
+    messageLabel.TextWrapped = true
+    messageLabel.ClipsDescendants = true
+    messageLabel.Font = Enum.Font.SourceSans
+    messageLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    messageLabel.RichText = true
+    messageLabel.TextXAlignment = Enum.TextXAlignment.Left
+    messageLabel.TextYAlignment = Enum.TextYAlignment.Top
+    messageLabel.Text = tostring(content)
+    messageLabel.TextTransparency = 1
+    messageLabel.Parent = notificationFrame
+
+    local imageLabel = Instance.new("ImageLabel")
+    imageLabel.Size = UDim2.new(0, 24, 0, 24)
+    imageLabel.Position = UDim2.new(1, -28, 0, 4)
+    imageLabel.BackgroundTransparency = 1
+    imageLabel.Image = image
+    imageLabel.ImageTransparency = 1
+    imageLabel.Parent = notificationFrame
+
+    local closeButton = Instance.new("TextButton")
+    closeButton.Size = UDim2.new(0, 20, 0, 20)
+    closeButton.Position = UDim2.new(1, -25, 1, -25)
+    closeButton.BackgroundTransparency = 1
+    closeButton.Text = "X"
+    closeButton.TextColor3 = Color3.fromRGB(255, 0, 0)
+    closeButton.Font = Enum.Font.SourceSansBold
+    closeButton.TextScaled = true
+    closeButton.TextTransparency = 1
+    closeButton.Parent = notificationFrame
+
+    closeButton.MouseButton1Click:Connect(function()
+        local tweenInfoOut = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+        TweenService:Create(notificationFrame, tweenInfoOut, {Position = UDim2.new(0, -320, 1, notificationFrame.Position.Y.Offset), BackgroundTransparency = 1}):Play()
+        TweenService:Create(titleLabel, tweenInfoOut, {TextTransparency = 1}):Play()
+        TweenService:Create(messageLabel, tweenInfoOut, {TextTransparency = 1}):Play()
+        TweenService:Create(imageLabel, tweenInfoOut, {ImageTransparency = 1}):Play()
+        TweenService:Create(closeButton, tweenInfoOut, {TextTransparency = 1}):Play()
+        task.wait(0.5)
+        screenGui:Destroy()
+        NotificationLib:RemoveNotification(notificationFrame)
+    end)
+
+    table.insert(self.ActiveNotifications, 1, notificationFrame)
     self:RepositionNotifications()
 
-    if duration then
-        task.delay(duration + 0.4, function()
-            if frame and frame.Parent then
-                self:RemoveNotification(frame)
-            end
+    local tweenInfoIn = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    TweenService:Create(notificationFrame, tweenInfoIn, {Position = UDim2.new(0, 10, 1, -10), BackgroundTransparency = 0}):Play()
+    TweenService:Create(titleLabel, tweenInfoIn, {TextTransparency = 0}):Play()
+    TweenService:Create(messageLabel, tweenInfoIn, {TextTransparency = 0}):Play()
+    TweenService:Create(imageLabel, tweenInfoIn, {ImageTransparency = 0}):Play()
+    TweenService:Create(closeButton, tweenInfoIn, {TextTransparency = 0}):Play()
+
+    if duration ~= nil then
+        task.delay(duration, function()
+            local tweenInfoOut = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+            TweenService:Create(notificationFrame, tweenInfoOut, {Position = UDim2.new(0, -320, 1, notificationFrame.Position.Y.Offset), BackgroundTransparency = 1}):Play()
+            TweenService:Create(titleLabel, tweenInfoOut, {TextTransparency = 1}):Play()
+            TweenService:Create(messageLabel, tweenInfoOut, {TextTransparency = 1}):Play()
+            TweenService:Create(imageLabel, tweenInfoOut, {ImageTransparency = 1}):Play()
+            TweenService:Create(closeButton, tweenInfoOut, {TextTransparency = 1}):Play()
+            task.wait(0.5)
+            screenGui:Destroy()
+            NotificationLib:RemoveNotification(notificationFrame)
         end)
     end
 
-    return frame
+    return notificationFrame
 end
 
 return NotificationLib
