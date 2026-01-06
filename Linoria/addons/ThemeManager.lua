@@ -12,10 +12,10 @@ local ThemeManager = {} do
 		['Aqua'] = { 5, httpService:JSONDecode('{"FontColor":"f0f0f0","MainColor":"141414","AccentColor":"3ca5a5","BackgroundColor":"6ea0a0","OutlineColor":"326464"}') },
 		['Viow Mars'] = { 6, httpService:JSONDecode('{"FontColor":"d3d0c8","MainColor":"130c0f","AccentColor":"e32b00","BackgroundColor":"321f27","OutlineColor":"28191d"}') },
 		['VSC Dark High Contrast'] = { 7, httpService:JSONDecode('{"FontColor":"ffffff","MainColor":"000000","AccentColor":"569cd6","BackgroundColor":"000000","OutlineColor":"ffffff"}') },
-		['BBot'] = { 8, httpService:JSONDecode('{"FontColor":"ffffff","MainColor":"1e1e1e","AccentColor":"7e48a3","BackgroundColor":"232323","OutlineColor":"141414"}') }, -- stays.
-		['Mint'] = { 9, httpService:JSONDecode('{"FontColor":"ffffff","MainColor":"242424","AccentColor":"3db488","BackgroundColor":"1c1c1c","OutlineColor":"373737"}') }, -- stays.
-		['Tokyo Night'] = { 10, httpService:JSONDecode('{"FontColor":"ffffff","MainColor":"191925","AccentColor":"6759b3","BackgroundColor":"16161f","OutlineColor":"323232"}') }, -- stays.
-		['Linoria Default'] = { 11, httpService:JSONDecode('{"FontColor":"ffffff","MainColor":"1c1c1c","AccentColor":"0055ff","BackgroundColor":"141414","OutlineColor":"323232"}') }, -- yes stays cuz its the default one
+		['BBot'] = { 8, httpService:JSONDecode('{"FontColor":"ffffff","MainColor":"1e1e1e","AccentColor":"7e48a3","BackgroundColor":"232323","OutlineColor":"141414"}') },
+		['Mint'] = { 9, httpService:JSONDecode('{"FontColor":"ffffff","MainColor":"242424","AccentColor":"3db488","BackgroundColor":"1c1c1c","OutlineColor":"373737"}') },
+		['Tokyo Night'] = { 10, httpService:JSONDecode('{"FontColor":"ffffff","MainColor":"191925","AccentColor":"6759b3","BackgroundColor":"16161f","OutlineColor":"323232"}') },
+		['Default'] = { 11, httpService:JSONDecode('{"FontColor":"ffffff","MainColor":"1c1c1c","AccentColor":"0055ff","BackgroundColor":"141414","OutlineColor":"323232"}') }
 	}
 
 	function ThemeManager:ApplyTheme(theme)
@@ -52,7 +52,7 @@ local ThemeManager = {} do
 	end
 
 	function ThemeManager:LoadDefault()		
-		local theme = 'Default'
+		local theme = 'Kami'
 		local content = isfile(self.Folder .. '/themes/default.txt') and readfile(self.Folder .. '/themes/default.txt')
 
 		local isDefault = true
