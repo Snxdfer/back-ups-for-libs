@@ -1,7 +1,7 @@
 --[[
-Orion Library
-Modified by: 00Fazee (elrandom#1311)
-Last Modified: 13/05/2026
+Orion Library - shlexware/jensonhirst
+Modified by: 00Fazee (elrandom#1311) | discord.gg/jB4yJgn3pE
+Last Modified: 17/05/2026
 ]]--
 
 local UserInputService = game:GetService("UserInputService")
@@ -17,7 +17,7 @@ local OrionLib = {
 	Connections = {},
 	Flags = {},
 	Themes = {
-		Default = {
+		DefaultDark = {
 			Main = Color3.fromRGB(25, 25, 25),
 			Second = Color3.fromRGB(32, 32, 32),
 			Stroke = Color3.fromRGB(60, 60, 60),
@@ -25,7 +25,7 @@ local OrionLib = {
 			Text = Color3.fromRGB(240, 240, 240),
 			TextDark = Color3.fromRGB(150, 150, 150)
 		},
-		DefaultV2 = {
+		Darker = {
 			Main = Color3.fromRGB(25, 25, 25),
 			Second = Color3.fromRGB(32, 32, 32),
 			Stroke = Color3.fromRGB(60, 60, 60),
@@ -50,7 +50,7 @@ local OrionLib = {
 local Icons = {}
 
 local Success, Response = pcall(function()
-	Icons = HttpService:JSONDecode(game:HttpGetAsync("https://raw.githubusercontent.com/evoincorp/lucideblox/master/src/modules/util/icons.json")).icons
+	Icons = HttpService:JSONDecode(game:HttpGetAsync("https://raw.githubusercontent.com/frappedevs/lucideblox/refs/heads/master/src/modules/util/icons.json")).icons
 end)
 
 if not Success then
@@ -166,6 +166,18 @@ end
 local function MakeElement(ElementName, ...)
 	local NewElement = OrionLib.Elements[ElementName](...)
 	return NewElement
+end
+
+local function AddItemTable(Table, Item, Value)
+	local Item = tostring(Item)
+	local Count = 1
+
+	while Table[Item] do
+		Count = Count + 1
+		Item = string.format('%s-%d', Item, Count)
+	end
+
+	Table[Item] = Value
 end
 
 local function SetProps(Element, Props)
@@ -499,8 +511,9 @@ function OrionLib:MakeWindow(WindowConfig)
 	WindowConfig.IntroText = WindowConfig.IntroText or "Orion Library (Modified by 00Fazee)"
 	WindowConfig.CloseCallback = WindowConfig.CloseCallback or function() end
 	WindowConfig.ShowIcon = WindowConfig.ShowIcon or false
-	WindowConfig.Icon = WindowConfig.Icon or "rbxassetid://8834748103"
-	WindowConfig.IntroIcon = WindowConfig.IntroIcon or "rbxassetid://8834748103"
+	WindowConfig.Icon = WindowConfig.Icon or "rbxassetid://76607437080421"
+	WindowConfig.IntroIcon = WindowConfig.IntroIcon or "rbxassetid://76607437080421"
+	WindowConfig.SearchBar = WindowConfig.SearchBar == true
 	OrionLib.Folder = WindowConfig.ConfigFolder
 	OrionLib.SaveCfg = WindowConfig.SaveConfig
 
@@ -510,12 +523,17 @@ function OrionLib:MakeWindow(WindowConfig)
 		end	
 	end
 
-	local TabHolder = AddThemeObject(SetChildren(SetProps(MakeElement("ScrollFrame", Color3.fromRGB(255, 255, 255), 4), {
-		Size = UDim2.new(1, 0, 1, -50)
-	}), {
-		MakeElement("List"),
-		MakeElement("Padding", 8, 0, 0, 8)
-	}), "Divider")
+	local TabHolder = AddThemeObject(SetChildren(SetProps(MakeElement("ScrollFrame", Color3.fromRGB(255, 255, 255), 4),
+		WindowConfig.SearchBar and {
+			Size = UDim2.new(1, 0, 1, -90),
+			Position = UDim2.new(0, 0, 0, 40)
+		} or {
+			Size = UDim2.new(1, 0, 1, -50)
+		}),
+		{
+			MakeElement("List"),
+			MakeElement("Padding", 8, 0, 0, 8)
+		}), "Divider")
 
 	AddConnection(TabHolder.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
 		TabHolder.CanvasSize = UDim2.new(0, 0, 0, TabHolder.UIListLayout.AbsoluteContentSize.Y + 16)
@@ -606,6 +624,53 @@ function OrionLib:MakeWindow(WindowConfig)
 		}),
 	}), "Second")
 
+		-- @ SearchBar (Zv-yz/github);
+	local Tabs = {};
+
+	if WindowConfig.SearchBar then
+		local SearchBox = Create("TextBox", {
+			Size = UDim2.new(1, 0, 1, 0),
+			BackgroundTransparency = 1,
+			TextColor3 = Color3.fromRGB(255, 255, 255),
+			PlaceholderColor3 = Color3.fromRGB(210,210,210),
+			PlaceholderText = "Search",
+			Font = Enum.Font.GothamSemibold,
+			TextWrapped = true,
+			Text = '',
+			TextXAlignment = Enum.TextXAlignment.Center,
+			TextSize = 14,
+			ClearTextOnFocus = false
+		})
+
+		local TextboxActual = AddThemeObject(SearchBox, "Text")
+
+		local SearchBar = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 1, 6), {
+			Parent = WindowStuff,
+			Size = UDim2.new(0, 130, 0, 24),
+			Position = UDim2.new(1.013, -12, 0.075, 0),
+			AnchorPoint = Vector2.new(1, 0.5)
+		}), {
+			AddThemeObject(MakeElement("Stroke"), "Stroke"),
+			TextboxActual
+		}), "Main")
+
+		local function SearchHandle()
+			local Text = string.lower(SearchBox.Text);
+
+			for i,v in pairs(Tabs) do
+				if v:IsA('TextButton') then
+					if string.find(string.lower(i), Text) then
+						v.Visible = true
+					else
+						v.Visible = false
+					end
+				end
+			end
+		end
+
+		AddConnection(TextboxActual:GetPropertyChangedSignal("Text"), SearchHandle);
+	end
+
 	local WindowName = AddThemeObject(SetProps(MakeElement("Label", WindowConfig.Name, 14), {
 		Size = UDim2.new(1, -30, 2, 0),
 		Position = UDim2.new(0, 25, 0, -24),
@@ -658,7 +723,7 @@ function OrionLib:MakeWindow(WindowConfig)
 		WindowName.Position = UDim2.new(0, 50, 0, -24)
 		local WindowIcon = SetProps(MakeElement("Image", WindowConfig.Icon), {
 			Size = UDim2.new(0, 20, 0, 20),
-			Position = UDim2.new(0, 25, 0, 15)
+			Position = UDim2.new(0, 20, 0, 15)
 		})
 		WindowIcon.Parent = MainWindow.TopBar
 	end	
@@ -768,7 +833,9 @@ function OrionLib:MakeWindow(WindowConfig)
 
 		if GetIcon(TabConfig.Icon) ~= nil then
 			TabFrame.Ico.Image = GetIcon(TabConfig.Icon)
-		end	
+		end
+		
+		AddItemTable(Tabs, TabConfig.Name, TabFrame)
 
 		local Container = AddThemeObject(SetChildren(SetProps(MakeElement("ScrollFrame", Color3.fromRGB(255, 255, 255), 5), {
 			Size = UDim2.new(1, -150, 1, -50),
@@ -1718,7 +1785,7 @@ function OrionLib:MakeWindow(WindowConfig)
 					Position = UDim2.new(0, 150, 0, 112),
 					Font = Enum.Font.GothamBold
 				}), "Text"),
-				AddThemeObject(SetProps(MakeElement("Label", "This part of the script is locked to Sirius Premium users. Purchase Premium in the Discord server (sirius.menu/discord)", 12), {
+				AddThemeObject(SetProps(MakeElement("Label", "This part of the script is locked to Premium users. Purchase Premium in the Discord server (discord.gg/jB4yJgn3pE)", 12), {
 					Size = UDim2.new(1, -200, 0, 14),
 					Position = UDim2.new(0, 150, 0, 138),
 					TextWrapped = true,
