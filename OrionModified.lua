@@ -1,5 +1,5 @@
 --[[
-Orion Library - shlexware/jensonhirst
+Orion Library - made by: shlexware/jensonhirst
 Modified by: 00Fazee (elrandom#1311) | discord.gg/jB4yJgn3pE
 Last Modified: 17/05/2026
 ]]--
@@ -25,7 +25,7 @@ local OrionLib = {
 			Text = Color3.fromRGB(240, 240, 240),
 			TextDark = Color3.fromRGB(150, 150, 150)
 		},
-		Darker = {
+		Darker = { -- not finished i guess
 			Main = Color3.fromRGB(25, 25, 25),
 			Second = Color3.fromRGB(32, 32, 32),
 			Stroke = Color3.fromRGB(60, 60, 60),
