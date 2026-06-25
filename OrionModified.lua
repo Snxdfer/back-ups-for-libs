@@ -1,7 +1,7 @@
 --[[
 Orion Library - made by: shlexware/jensonhirst
 Modified by: 00Fazee (elrandom#1311) | discord.gg/jB4yJgn3pE
-Last Modified: 24/06/2026 | Day/Month/Year
+Last Modified: 25/06/2026 | Day/Month/Year
 ]]--
 
 local UserInputService = game:GetService("UserInputService")
@@ -736,6 +736,7 @@ function OrionLib:MakeWindow(WindowConfig)
 		OrionLib:MakeNotification({
 			Name = "Interface Hidden",
 			Content = "Tap RightShift to reopen the interface",
+			Image = "rbxassetid://10723346871",
 			Time = 5
 		})
 		WindowConfig.CloseCallback()
@@ -881,27 +882,29 @@ function OrionLib:MakeWindow(WindowConfig)
 
 		local function GetElements(ItemParent)
 			local ElementFunction = {}
-			function ElementFunction:AddLabel(Text)
-				local LabelFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
-					Size = UDim2.new(1, 0, 0, 30),
-					BackgroundTransparency = 0.7,
-					Parent = ItemParent
-				}), {
-					AddThemeObject(SetProps(MakeElement("Label", Text, 15), {
-						Size = UDim2.new(1, -12, 1, 0),
-						Position = UDim2.new(0, 12, 0, 0),
-						Font = Enum.Font.GothamBold,
-						Name = "Content"
-					}), "Text"),
-					AddThemeObject(MakeElement("Stroke"), "Stroke")
-				}), "Second")
+			function ElementFunction:AddLabel(Text) -- fixed
+    local ContentLabel = AddThemeObject(SetProps(MakeElement("Label", Text, 15), {
+        Size = UDim2.new(1, -12, 1, 0),
+        Position = UDim2.new(0, 12, 0, 0),
+        Font = Enum.Font.GothamBold,
+        Name = "Content"
+    }), "Text")
 
-				local LabelFunction = {}
-				function LabelFunction:Set(ToChange)
-					LabelFrame.Content.Text = ToChange
-				end
-				return LabelFunction
-			end
+    local LabelFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
+        Size = UDim2.new(1, 0, 0, 30),
+        BackgroundTransparency = 0.7,
+        Parent = ItemParent
+    }), {
+        ContentLabel,
+        AddThemeObject(MakeElement("Stroke"), "Stroke")
+    }), "Second")
+
+    local LabelFunction = {}
+    function LabelFunction:Set(ToChange)
+        ContentLabel.Text = ToChange
+    end
+    return LabelFunction
+end
 			function ElementFunction:AddParagraph(Text, Content)
 				Text = Text or "Text"
 				Content = Content or "Content"
