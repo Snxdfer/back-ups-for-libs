@@ -1,6 +1,7 @@
 --[[
      AcrylicUI
-     Version: 2.0.0                                                                                         
+     Version: 2.0.0
+     fix 1
 ]]--
 
 local TweenService = game:GetService("TweenService")
@@ -413,9 +414,9 @@ function Library.new(title, configFolder)
     self._keybinds = {}
     self._toggleKey = Enum.KeyCode.RightControl
     self._visible = true
-    self._originalHeight = SizeSizes.Window.Height
-    self._minSize = Vector2.new(SizeSizes.MinWindow.Width, SizeSizes.MinWindow.Height)
-    self._maxSize = Vector2.new(SizeSizes.MaxWindow.Width, SizeSizes.MaxWindow.Height)
+    self._originalHeight = Sizes.Window.Height
+    self._minSize = Vector2.new(Sizes.MinWindow.Width, Sizes.MinWindow.Height)
+    self._maxSize = Vector2.new(Sizes.MaxWindow.Width, Sizes.MaxWindow.Height)
     self._mobileToggle = nil
     self._configElements = {}
     self._autoSave = false
@@ -603,9 +604,9 @@ function Library:_CreateMainWindow()
         Name = "Container",
         BackgroundColor3 = Colors.Background,
         BackgroundTransparency = 0.05,
-        Position = UDim2.new(0.5, -SizeSizes.Window.Width / 2, 0.5, -SizeSizes.Window.Height / 2),
+        Position = UDim2.new(0.5, -Sizes.Window.Width / 2, 0.5, -Sizes.Window.Height / 2),
         BorderSizePixel = 0,
-        Size = UDim2.new(0, SizeSizes.Window.Width, 0, SizeSizes.Window.Height),
+        Size = UDim2.new(0, Sizes.Window.Width, 0, Sizes.Window.Height),
         ClipsDescendants = false,
         Parent = self.screenGui
     })
