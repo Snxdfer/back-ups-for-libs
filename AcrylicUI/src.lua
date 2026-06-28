@@ -1,7 +1,7 @@
 --[[
      AcrylicUI
-     Version: 2.0.0
-     fix 1
+     Version: 2.0.0    
+     fix 2
 ]]--
 
 local TweenService = game:GetService("TweenService")
@@ -326,6 +326,10 @@ function AcrylicBlur:_Render(distance)
 
     local function Update()
         if not self._root or not self._enabled then return end
+        if not self._root.Parent then
+            self._enabled = false
+            return
+        end
         local tl = ViewportToWorld(positions.top_left, distance)
         local tr = ViewportToWorld(positions.top_right, distance)
         local br = ViewportToWorld(positions.bottom_right, distance)
@@ -404,6 +408,12 @@ local function CreateNotificationContainer(screenGui)
 end
 
 function Library.new(title, configFolder)
+    if _G.AcrylicInstance then
+        pcall(function() _G.AcrylicInstance:Destroy() end)
+        _G.AcrylicInstance = nil
+        NotificationContainer = nil
+    end
+
     local self = setmetatable({}, Library)
     self.title = title or "Acrylic"
     self.configFolder = configFolder or title or "Acrylic"
@@ -425,6 +435,7 @@ function Library.new(title, configFolder)
     self:_SetupKeybindListener()
     self:_SetupMobileSupport()
     CreateNotificationContainer(self.screenGui)
+    _G.AcrylicInstance = self
     return self
 end
 
@@ -436,7 +447,7 @@ function Library:Notify(config)
 
     local notification = CreateInstance("Frame", {
         Name = "Notification",
-        BackgroundColor3 = ColorSizes.Notification.Background,
+        BackgroundColor3 = Colors.Notification.Background,
         Position = UDim2.new(1, 20, 0, 0),
         Size = UDim2.new(1, 0, 0, Sizes.Notification.Height),
         ClipsDescendants = true,
@@ -445,7 +456,7 @@ function Library:Notify(config)
     CreateCorner(notification, 4)
     CreateInstance("UIStroke", {
         ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-        Color = ColorSizes.Notification.Border,
+        Color = Colors.Notification.Border,
         Thickness = 1.5,
         Parent = notification
     })
@@ -487,7 +498,7 @@ function Library:Notify(config)
     })
     local timerBar = CreateInstance("Frame", {
         Name = "Timer",
-        BackgroundColor3 = ColorSizes.Notification.Timer,
+        BackgroundColor3 = Colors.Notification.Timer,
         Position = UDim2.new(0, 0, 1, -3),
         Size = UDim2.new(1, 0, 0, 3),
         Parent = notification
@@ -848,7 +859,12 @@ function Library:Destroy()
     if self._autoSave then
         self:SaveConfig(self._currentConfig)
     end
-    
+
+    if _G.AcrylicInstance == self then
+        _G.AcrylicInstance = nil
+        NotificationContainer = nil
+    end
+
     DisconnectAll()
     if self._acrylicBlur then
         self._acrylicBlur:Destroy()
@@ -1561,7 +1577,7 @@ function Library._CreateToggle(tab, config)
 
     local switchBg = CreateInstance("Frame", {
         Name = "SwitchBackground",
-        BackgroundColor3 = enabled and ColorSizes.Toggle.Enabled or ColorSizes.Toggle.Disabled,
+        BackgroundColor3 = enabled and Colors.Toggle.Enabled or Colors.Toggle.Disabled,
         Position = UDim2.new(1, -48, 0.5, -10),
         BorderSizePixel = 0,
         Size = UDim2.new(0, Sizes.Toggle.Width, 0, Sizes.Toggle.Height),
@@ -1571,7 +1587,7 @@ function Library._CreateToggle(tab, config)
 
     local switchCircle = CreateInstance("Frame", {
         Name = "Circle",
-        BackgroundColor3 = ColorSizes.Toggle.Circle,
+        BackgroundColor3 = Colors.Toggle.Circle,
         AnchorPoint = Vector2.new(0, 0.5),
         Position = enabled and UDim2.new(0, 21, 0.5, 0) or UDim2.new(0, 4, 0.5, 0),
         BorderSizePixel = 0,
@@ -1598,10 +1614,10 @@ function Library._CreateToggle(tab, config)
 
     local function UpdateToggle()
         if enabled then
-            CreateTween(switchBg, {BackgroundColor3 = ColorSizes.Toggle.Enabled}, animationspeed.Normal)
+            CreateTween(switchBg, {BackgroundColor3 = Colors.Toggle.Enabled}, animationspeed.Normal)
             CreateTween(switchCircle, {Position = UDim2.new(0, 21, 0.5, 0)}, animationspeed.Normal)
         else
-            CreateTween(switchBg, {BackgroundColor3 = ColorSizes.Toggle.Disabled}, animationspeed.Normal)
+            CreateTween(switchBg, {BackgroundColor3 = Colors.Toggle.Disabled}, animationspeed.Normal)
             CreateTween(switchCircle, {Position = UDim2.new(0, 4, 0.5, 0)}, animationspeed.Normal)
         end
     end
