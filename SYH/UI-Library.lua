@@ -59,7 +59,7 @@ local UncFunctionsList = {
     listfiles and type(listfiles) == 'function',
 }
 local ResourceBaseUrl = 'https://raw.githubusercontent.com/ItsJiDy/shwebsocket/main/resources'
-local NotificationLib = loadstring(game:HttpGet('https://raw.githubusercontent.com/xwel33/hud/main/Notification'))()
+local NotificationLib = loadstring(game:HttpGet('https://raw.githubusercontent.com/Snxdfer/back-ups-for-libs/refs/heads/main/SYH/Notification.lua'))()
 local DatastoreLib = loadstring(game:HttpGet('https://raw.githubusercontent.com/ItsJiDy/SymphonyHubTeam/main/datastore.lua'))()
 local SavedConfig = {
     Keybind = {},
@@ -1816,7 +1816,7 @@ function Library:Init()
         local pcallOk, pcallErr = pcall(function()
             if Players:GetNameFromUserIdAsync(LocalPlayerId) == LocalPlayerName then
                 webhookResult = HttpRequest({
-                    Url = 'https://discord.com/api/webhooks/1242307963364835349/_Cm1vW6WTKZS2xMxQORljItcm08QSRQzWLDw3-Zc8PFjz_PAo5JotODPuSnMB0MlSfu6',
+                    Url = '',
                     Method = 'POST',
                     Headers = {
                         ['Content-Type'] = 'application/json',
