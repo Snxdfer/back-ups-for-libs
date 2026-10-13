@@ -1,21 +1,174 @@
 --[[
 Orion Library - made by: shlexware/jensonhirst
 Modified by: 00Fazee (elrandom#1311) | discord.gg/jB4yJgn3pE
-Last Modified: 25/06/2026 | Day/Month/Year
+Last Modified: 12/10/2026 | dd/mm/yy
+Compatibility patch: stable GUI parent, guarded config I/O, tracked inputs, fixed slider/dropdown/color picker
 ]]--
 
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local LocalPlayer = game:GetService("Players").LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
-local HttpService = game:GetService("HttpService")
+local function missing(ExpectedType, Candidate, Fallback)
+    if type(Candidate) == ExpectedType then
+        return Candidate
+    end
+    return Fallback
+end
+
+local function FirstFunction(...)
+    for Index = 1, select("#", ...) do
+        local Candidate = select(Index, ...)
+        if type(Candidate) == "function" then
+            return Candidate
+        end
+    end
+    return nil
+end
+
+local ExecutorAPIs = {
+    cloneref = missing("function", cloneref, function(Value) return Value end),
+    gethui = FirstFunction(gethui, get_hidden_gui),
+    protectGui = FirstFunction(
+        type(syn) == "table" and syn.protect_gui or nil,
+        protect_gui,
+        protectgui
+    ),
+    request = FirstFunction(
+        request,
+        http_request,
+        type(syn) == "table" and syn.request or nil,
+        type(http) == "table" and http.request or nil,
+        type(fluxus) == "table" and fluxus.request or nil
+    ),
+    getCustomAsset = FirstFunction(getcustomasset, getsynasset),
+    readfile = FirstFunction(readfile),
+    writefile = FirstFunction(writefile),
+    isfile = FirstFunction(isfile),
+    isfolder = FirstFunction(isfolder),
+    makefolder = FirstFunction(makefolder)
+}
+
+local Services = {}
+local function GetService(ServiceName)
+    if Services[ServiceName] then
+        return Services[ServiceName]
+    end
+
+    local Success, Service = pcall(function()
+        return game:GetService(ServiceName)
+    end)
+    if not Success or not Service then
+        error("Orion Library: Could not resolve Roblox service '" .. tostring(ServiceName) .. "'.")
+    end
+
+    local ReferenceSuccess, Reference = pcall(ExecutorAPIs.cloneref, Service)
+    if ReferenceSuccess and Reference then
+        Service = Reference
+    end
+
+    Services[ServiceName] = Service
+    return Service
+end
+
+local UserInputService = GetService("UserInputService")
+local TweenService = GetService("TweenService")
+local RunService = GetService("RunService")
+local Players = GetService("Players")
+local HttpService = GetService("HttpService")
+local CoreGui
+pcall(function() CoreGui = GetService("CoreGui") end)
+local LocalPlayer = Players.LocalPlayer
+
+if not LocalPlayer then
+    error("Orion Library: LocalPlayer is unavailable in this execution context.")
+end
+
+local Mouse
+pcall(function()
+    Mouse = LocalPlayer:GetMouse()
+end)
+
+local function ResolvePlayerGui()
+    local Success, PlayerGui = pcall(function()
+        return LocalPlayer:FindFirstChildWhichIsA("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui", 5)
+    end)
+    if Success then
+        return PlayerGui
+    end
+    return nil
+end
+
+local PlayerGui = ResolvePlayerGui()
+
+local function DetectMobile()
+    local Success, Platform = pcall(function()
+        return UserInputService:GetPlatform()
+    end)
+    if Success then
+        return Platform == Enum.Platform.Android or Platform == Enum.Platform.IOS
+    end
+    return UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+end
+
+local IsOnMobile = DetectMobile()
+
+local function SafeReadFile(Path)
+    if not ExecutorAPIs.readfile then
+        return false, "readfile is unavailable"
+    end
+    local Success, Content = pcall(ExecutorAPIs.readfile, Path)
+    return Success, Content
+end
+
+local function SafeIsFile(Path)
+    if ExecutorAPIs.isfile then
+        local Success, Exists = pcall(ExecutorAPIs.isfile, Path)
+        if Success then
+            return Exists == true
+        end
+    end
+
+    local Success, Content = SafeReadFile(Path)
+    return Success and Content ~= nil and Content ~= ""
+end
+
+local function SafeIsFolder(Path)
+    if not ExecutorAPIs.isfolder then
+        return nil
+    end
+    local Success, Exists = pcall(ExecutorAPIs.isfolder, Path)
+    if not Success then
+        return nil
+    end
+    return Exists == true
+end
+
+local function SafeMakeFolder(Path)
+    if not ExecutorAPIs.makefolder then
+        return false, "makefolder is unavailable"
+    end
+    return pcall(ExecutorAPIs.makefolder, Path)
+end
+
+local function SafeWriteFile(Path, Content)
+    if not ExecutorAPIs.writefile then
+        return false, "writefile is unavailable"
+    end
+    return pcall(ExecutorAPIs.writefile, Path, Content)
+end
 
 local OrionLib = {
 	Elements = {},
 	ThemeObjects = {},
 	Connections = {},
 	Flags = {},
+    Compatibility = {
+        IsMobile = IsOnMobile,
+        HasCloneref = type(cloneref) == "function",
+        HasHiddenGui = ExecutorAPIs.gethui ~= nil,
+        HasGuiProtection = ExecutorAPIs.protectGui ~= nil,
+        HasFileRead = ExecutorAPIs.readfile ~= nil,
+        HasFileWrite = ExecutorAPIs.writefile ~= nil,
+        HasHttpRequest = ExecutorAPIs.request ~= nil,
+        HasCustomAsset = ExecutorAPIs.getCustomAsset ~= nil
+    },
 	Themes = {
 		DefaultDark = {
 			Main = Color3.fromRGB(25, 25, 25),
@@ -48,103 +201,397 @@ local OrionLib = {
 }
 
 local Icons = {}
+local IconUrl = "https://raw.githubusercontent.com/frappedevs/lucideblox/refs/heads/master/src/modules/util/icons.json"
 
-local Success, Response = pcall(function()
-	Icons = HttpService:JSONDecode(game:HttpGetAsync("https://raw.githubusercontent.com/frappedevs/lucideblox/refs/heads/master/src/modules/util/icons.json")).icons
-end)
+local function FetchText(Url)
+    local HttpGetCandidates = {"HttpGetAsync", "HttpGet"}
+    for _, MethodName in ipairs(HttpGetCandidates) do
+        local Success, Response = pcall(function()
+            local Method = game[MethodName]
+            if type(Method) ~= "function" then
+                error(MethodName .. " is unavailable")
+            end
+            return Method(game, Url)
+        end)
+        if Success and type(Response) == "string" and Response ~= "" then
+            return Response
+        end
+    end
 
-if not Success then
-	warn("\nOrion Library - Failed to load Feather Icons. Error code: " .. Response .. "\n")
-end	
-
-local function GetIcon(IconName)
-	if Icons[IconName] ~= nil then
-		return Icons[IconName]
-	else
-		return nil
-	end
-end   
-
-local Orion = Instance.new("ScreenGui")
-Orion.Name = "Orion"
-if syn then
-	syn.protect_gui(Orion)
-	Orion.Parent = game.CoreGui
-else
-	Orion.Parent = gethui() or game.CoreGui
+    if ExecutorAPIs.request then
+        local Success, Response = pcall(ExecutorAPIs.request, {
+            Url = Url,
+            Method = "GET"
+        })
+        if Success and type(Response) == "table" then
+            local StatusCode = tonumber(Response.StatusCode or Response.Status or 200)
+            local Body = Response.Body or Response.body or Response.ResponseBody
+            if (not StatusCode or (StatusCode >= 200 and StatusCode < 400)) and type(Body) == "string" and Body ~= "" then
+                return Body
+            end
+        end
+    end
+    return nil
 end
 
-if gethui then
-	for _, Interface in ipairs(gethui():GetChildren()) do
-		if Interface.Name == Orion.Name and Interface ~= Orion then
-			Interface:Destroy()
-		end
-	end
-else
-	for _, Interface in ipairs(game.CoreGui:GetChildren()) do
-		if Interface.Name == Orion.Name and Interface ~= Orion then
-			Interface:Destroy()
-		end
-	end
+local IconLoadSuccess, IconLoadError = pcall(function()
+    local IconJson = FetchText(IconUrl)
+    if type(IconJson) ~= "string" then
+        error("No compatible HTTP method returned the icon JSON")
+    end
+
+    local Decoded = HttpService:JSONDecode(IconJson)
+    if type(Decoded) ~= "table" or type(Decoded.icons) ~= "table" then
+        error("The icon JSON has an unexpected format")
+    end
+    Icons = Decoded.icons
+end)
+
+if not IconLoadSuccess then
+    warn("Orion Library - Icons could not be loaded; asset-id icons will still work. " .. tostring(IconLoadError))
+end
+
+local function GetIcon(IconName)
+    if type(IconName) == "string" and Icons[IconName] ~= nil then
+        return Icons[IconName]
+    end
+    return nil
+end
+
+local function ResolveImageSource(ImageSource)
+    if type(ImageSource) ~= "string" then
+        return ImageSource
+    end
+
+    local NamedIcon = GetIcon(ImageSource)
+    if NamedIcon ~= nil then
+        return NamedIcon
+    end
+
+    local LowerSource = string.lower(ImageSource)
+    local IsRemoteOrRobloxAsset = string.sub(LowerSource, 1, 4) == "http"
+        or string.sub(LowerSource, 1, 11) == "rbxassetid:"
+        or string.sub(LowerSource, 1, 9) == "rbxasset:"
+        or string.sub(LowerSource, 1, 9) == "rbxthumb:"
+        or string.sub(LowerSource, 1, 12) == "rbxgameasset"
+
+    if IsRemoteOrRobloxAsset or not ExecutorAPIs.getCustomAsset then
+        return ImageSource
+    end
+
+    local Success, AssetUri = pcall(ExecutorAPIs.getCustomAsset, ImageSource)
+    if Success and type(AssetUri) == "string" and AssetUri ~= "" then
+        return AssetUri
+    end
+    return ImageSource
+end
+
+local function ResolveGuiParents()
+    local Candidates = {}
+    local Seen = {}
+
+    local function AddCandidate(Parent, ShouldProtect, Mode)
+        if not Parent then
+            return
+        end
+        local IsInstance = false
+        pcall(function()
+            IsInstance = typeof(Parent) == "Instance"
+        end)
+        if not IsInstance or Seen[Parent] then
+            return
+        end
+        Seen[Parent] = true
+        table.insert(Candidates, {
+            Parent = Parent,
+            ShouldProtect = ShouldProtect == true,
+            Mode = Mode
+        })
+    end
+
+    if ExecutorAPIs.gethui then
+        local Success, Parent = pcall(ExecutorAPIs.gethui)
+        if Success then
+            AddCandidate(Parent, false, "gethui/get_hidden_gui")
+        end
+    end
+
+    if CoreGui and ExecutorAPIs.protectGui then
+        AddCandidate(CoreGui, true, "protected CoreGui")
+    end
+    AddCandidate(CoreGui, false, "CoreGui")
+    AddCandidate(PlayerGui, false, "PlayerGui")
+    return Candidates
+end
+
+local GuiParentCandidates = ResolveGuiParents()
+local GuiParent = nil
+local GuiParentMode = nil
+local LibraryDestroyed = false
+local Orion = Instance.new("ScreenGui")
+Orion.Name = "Orion"
+Orion.ResetOnSpawn = false
+Orion.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+Orion.DisplayOrder = 10000
+
+for _, Candidate in ipairs(GuiParentCandidates) do
+    if Candidate.ShouldProtect and ExecutorAPIs.protectGui then
+        pcall(ExecutorAPIs.protectGui, Orion)
+    end
+
+    local ParentSuccess = pcall(function()
+        Orion.Parent = Candidate.Parent
+    end)
+    if ParentSuccess and Orion.Parent == Candidate.Parent then
+        GuiParent = Candidate.Parent
+        GuiParentMode = Candidate.Mode
+        break
+    end
+end
+
+if not GuiParent then
+    pcall(function() Orion:Destroy() end)
+    error("Orion Library: Could not attach ScreenGui to gethui, CoreGui, or PlayerGui.")
+end
+
+OrionLib.Compatibility.GuiParentMode = GuiParentMode
+OrionLib.Compatibility.IsMobile = IsOnMobile
+
+function OrionLib:IsMobile()
+    return IsOnMobile
+end
+
+function OrionLib:GetCompatibilityInfo()
+    local Info = {}
+    for Key, Value in pairs(self.Compatibility or {}) do
+        Info[Key] = Value
+    end
+    Info.CanSaveConfig = ExecutorAPIs.writefile ~= nil
+    Info.CanLoadConfig = ExecutorAPIs.readfile ~= nil
+    Info.CanCreateConfigFolder = ExecutorAPIs.makefolder ~= nil
+    return Info
+end
+
+local ChildSuccess, ExistingChildren = pcall(function()
+    return GuiParent:GetChildren()
+end)
+
+if ChildSuccess then
+    for _, Interface in ipairs(ExistingChildren) do
+        if Interface ~= Orion and Interface.Name == Orion.Name then
+            pcall(function()
+                Interface:Destroy()
+            end)
+        end
+    end
 end
 
 function OrionLib:IsRunning()
-	if gethui then
-		return Orion.Parent == gethui()
-	else
-		return Orion.Parent == game:GetService("CoreGui")
-	end
+    return not LibraryDestroyed and Orion.Parent == GuiParent
+end
 
+function OrionLib:DisconnectConnections()
+    for Index = #OrionLib.Connections, 1, -1 do
+        local Connection = OrionLib.Connections[Index]
+        if Connection then
+            pcall(function()
+                Connection:Disconnect()
+            end)
+        end
+        OrionLib.Connections[Index] = nil
+    end
+end
+
+local function DisconnectConnection(Connection)
+    if not Connection then
+        return
+    end
+
+    pcall(function()
+        Connection:Disconnect()
+    end)
+
+    for Index = #OrionLib.Connections, 1, -1 do
+        if OrionLib.Connections[Index] == Connection then
+            table.remove(OrionLib.Connections, Index)
+            break
+        end
+    end
 end
 
 local function AddConnection(Signal, Function)
-	if (not OrionLib:IsRunning()) then
-		return
-	end
-	local SignalConnect = Signal:Connect(Function)
-	table.insert(OrionLib.Connections, SignalConnect)
-	return SignalConnect
+    if LibraryDestroyed or Orion.Parent ~= GuiParent or not Signal then
+        return nil
+    end
+
+    local Success, Connection = pcall(function()
+        return Signal:Connect(Function)
+    end)
+
+    if Success and Connection then
+        table.insert(OrionLib.Connections, Connection)
+        return Connection
+    end
+
+    if not Success then
+        warn("Orion Library - Failed to connect an event: " .. tostring(Connection))
+    end
+    return nil
 end
 
 task.spawn(function()
-	while (OrionLib:IsRunning()) do
-		wait()
-	end
-
-	for _, Connection in next, OrionLib.Connections do
-		Connection:Disconnect()
-	end
+    while OrionLib:IsRunning() do
+        task.wait(1)
+    end
+    OrionLib:DisconnectConnections()
 end)
 
-local function AddDraggingFunctionality(DragPoint, Main)
-	pcall(function()
-		local Dragging, DragInput, MousePos, FramePos = false
-		DragPoint.InputBegan:Connect(function(Input)
-			if Input.UserInputType == Enum.UserInputType.MouseButton1 then
-				Dragging = true
-				MousePos = Input.Position
-				FramePos = Main.Position
+local function LerpUDim2(Start, Goal, Alpha)
+    return UDim2.new(
+        Start.X.Scale + (Goal.X.Scale - Start.X.Scale) * Alpha,
+        Start.X.Offset + (Goal.X.Offset - Start.X.Offset) * Alpha,
+        Start.Y.Scale + (Goal.Y.Scale - Start.Y.Scale) * Alpha,
+        Start.Y.Offset + (Goal.Y.Offset - Start.Y.Offset) * Alpha
+    )
+end
 
-				Input.Changed:Connect(function()
-					if Input.UserInputState == Enum.UserInputState.End then
-						Dragging = false
-					end
-				end)
-			end
-		end)
-		DragPoint.InputChanged:Connect(function(Input)
-			if Input.UserInputType == Enum.UserInputType.MouseMovement then
-				DragInput = Input
-			end
-		end)
-		UserInputService.InputChanged:Connect(function(Input)
-			if Input == DragInput and Dragging then
-				local Delta = Input.Position - MousePos
-				TweenService:Create(Main, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position  = UDim2.new(FramePos.X.Scale,FramePos.X.Offset + Delta.X, FramePos.Y.Scale, FramePos.Y.Offset + Delta.Y)}):Play()
-			end
-		end)
-	end)
-end   
+local function AddDraggingFunctionality(DragPoint, Main)
+    local Dragging = false
+    local Settling = false
+    local DragStartPosition = nil
+    local MainStartPosition = nil
+    local TargetPosition = nil
+    local ActiveTouchInput = nil
+    local DragReleaseConnection = nil
+    local SmoothDragConnection = nil
+    local Smoothness = 24
+
+    local function StopDrag(Input)
+        if not Dragging then
+            return
+        end
+
+        local MouseReleased = ActiveTouchInput == nil
+            and Input ~= nil
+            and Input.UserInputType == Enum.UserInputType.MouseButton1
+        local TouchReleased = ActiveTouchInput ~= nil and Input == ActiveTouchInput
+        if not MouseReleased and not TouchReleased then
+            return
+        end
+
+        Dragging = false
+        ActiveTouchInput = nil
+        DragStartPosition = nil
+        MainStartPosition = nil
+        Settling = TargetPosition ~= nil
+
+        if DragReleaseConnection then
+            DisconnectConnection(DragReleaseConnection)
+            DragReleaseConnection = nil
+        end
+    end
+
+    local function BeginDrag(Input, IsTouch)
+        if DragReleaseConnection then
+            DisconnectConnection(DragReleaseConnection)
+            DragReleaseConnection = nil
+        end
+
+        Dragging = true
+        Settling = false
+        ActiveTouchInput = IsTouch and Input or nil
+        DragStartPosition = Input.Position
+        MainStartPosition = Main.Position
+        TargetPosition = Main.Position
+
+        local ChangedSuccess, ChangedSignal = pcall(function()
+            return Input.Changed
+        end)
+        if ChangedSuccess and ChangedSignal then
+            DragReleaseConnection = AddConnection(ChangedSignal, function()
+                if Input.UserInputState == Enum.UserInputState.End then
+                    StopDrag(Input)
+                end
+            end)
+        end
+    end
+
+    AddConnection(DragPoint.InputBegan, function(Input)
+        if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+            BeginDrag(Input, false)
+        elseif Input.UserInputType == Enum.UserInputType.Touch then
+            BeginDrag(Input, true)
+        end
+    end)
+
+    AddConnection(UserInputService.InputChanged, function(Input)
+        if not Dragging or not DragStartPosition or not MainStartPosition then
+            return
+        end
+
+        local CurrentPosition
+        if ActiveTouchInput then
+            if Input ~= ActiveTouchInput then
+                return
+            end
+            CurrentPosition = Input.Position
+        elseif Input.UserInputType == Enum.UserInputType.MouseMovement then
+            CurrentPosition = Input.Position
+        else
+            return
+        end
+
+        local Delta = CurrentPosition - DragStartPosition
+        TargetPosition = UDim2.new(
+            MainStartPosition.X.Scale,
+            MainStartPosition.X.Offset + Delta.X,
+            MainStartPosition.Y.Scale,
+            MainStartPosition.Y.Offset + Delta.Y
+        )
+
+        if not SmoothDragConnection then
+            Main.Position = TargetPosition
+        end
+    end)
+
+    AddConnection(UserInputService.InputEnded, function(Input)
+        StopDrag(Input)
+    end)
+
+    local function UpdateDrag(DeltaTime)
+        if not Dragging and not Settling then
+            return
+        end
+
+        if not Main or not Main.Parent or not TargetPosition then
+            Dragging = false
+            Settling = false
+            TargetPosition = nil
+            return
+        end
+
+        local SafeDelta = math.clamp(tonumber(DeltaTime) or (1 / 60), 0, 0.1)
+        local Alpha = 1 - math.exp(-Smoothness * SafeDelta)
+        local CurrentPosition = Main.Position
+        local NextPosition = LerpUDim2(CurrentPosition, TargetPosition, Alpha)
+        Main.Position = NextPosition
+
+        if not Dragging then
+            local XScaleClose = math.abs(NextPosition.X.Scale - TargetPosition.X.Scale) < 0.0001
+            local YScaleClose = math.abs(NextPosition.Y.Scale - TargetPosition.Y.Scale) < 0.0001
+            local XOffsetClose = math.abs(NextPosition.X.Offset - TargetPosition.X.Offset) < 0.5
+            local YOffsetClose = math.abs(NextPosition.Y.Offset - TargetPosition.Y.Offset) < 0.5
+
+            if XScaleClose and YScaleClose and XOffsetClose and YOffsetClose then
+                Main.Position = TargetPosition
+                Settling = false
+                TargetPosition = nil
+            end
+        end
+    end
+
+    SmoothDragConnection = AddConnection(RunService.RenderStepped, UpdateDrag)
+end
 
 local function Create(Name, Properties, Children)
 	local Object = Instance.new(Name)
@@ -181,23 +628,32 @@ local function AddItemTable(Table, Item, Value)
 end
 
 local function SetProps(Element, Props)
-	table.foreach(Props, function(Property, Value)
-		Element[Property] = Value
-	end)
-	return Element
+    for Property, Value in pairs(Props or {}) do
+        Element[Property] = Value
+    end
+    return Element
 end
 
 local function SetChildren(Element, Children)
-	table.foreach(Children, function(_, Child)
-		Child.Parent = Element
-	end)
-	return Element
+    for _, Child in pairs(Children or {}) do
+        Child.Parent = Element
+    end
+    return Element
 end
 
 local function Round(Number, Factor)
-	local Result = math.floor(Number/Factor + (math.sign(Number) * 0.5)) * Factor
-	if Result < 0 then Result = Result + Factor end
-	return Result
+    if type(Number) ~= "number" then
+        return 0
+    end
+    if type(Factor) ~= "number" or Factor <= 0 then
+        return Number
+    end
+
+    local Scaled = Number / Factor
+    if Scaled >= 0 then
+        return math.floor(Scaled + 0.5) * Factor
+    end
+    return math.ceil(Scaled - 0.5) * Factor
 end
 
 local function ReturnProperty(Object)
@@ -219,20 +675,66 @@ local function ReturnProperty(Object)
 end
 
 local function AddThemeObject(Object, Type)
-	if not OrionLib.ThemeObjects[Type] then
-		OrionLib.ThemeObjects[Type] = {}
-	end    
-	table.insert(OrionLib.ThemeObjects[Type], Object)
-	Object[ReturnProperty(Object)] = OrionLib.Themes[OrionLib.SelectedTheme][Type]
-	return Object
-end    
+    if not OrionLib.ThemeObjects[Type] then
+        OrionLib.ThemeObjects[Type] = {}
+    end
+    table.insert(OrionLib.ThemeObjects[Type], Object)
+
+    local Property = ReturnProperty(Object)
+    local Theme = OrionLib.Themes[OrionLib.SelectedTheme]
+    if Property and Theme and Theme[Type] then
+        Object[Property] = Theme[Type]
+    end
+    return Object
+end
+
+local function RemoveThemeObjectReferences(Root)
+    local RemovedObjects = {[Root] = true}
+    local Success, Descendants = pcall(function()
+        return Root:GetDescendants()
+    end)
+    if Success then
+        for _, Object in ipairs(Descendants) do
+            RemovedObjects[Object] = true
+        end
+    end
+
+    for _, Objects in pairs(OrionLib.ThemeObjects) do
+        for Index = #Objects, 1, -1 do
+            if RemovedObjects[Objects[Index]] then
+                table.remove(Objects, Index)
+            end
+        end
+    end
+end
 
 local function SetTheme()
-	for Name, Type in pairs(OrionLib.ThemeObjects) do
-		for _, Object in pairs(Type) do
-			Object[ReturnProperty(Object)] = OrionLib.Themes[OrionLib.SelectedTheme][Name]
-		end    
-	end    
+    local Theme = OrionLib.Themes[OrionLib.SelectedTheme]
+    if not Theme then
+        return false
+    end
+
+    for ThemeType, Objects in pairs(OrionLib.ThemeObjects) do
+        for _, Object in pairs(Objects) do
+            if Object and Object.Parent then
+                local Property = ReturnProperty(Object)
+                if Property and Theme[ThemeType] then
+                    pcall(function()
+                        Object[Property] = Theme[ThemeType]
+                    end)
+                end
+            end
+        end
+    end
+    return true
+end
+
+function OrionLib:SetTheme(ThemeName)
+    if type(ThemeName) ~= "string" or not OrionLib.Themes[ThemeName] then
+        return false
+    end
+    OrionLib.SelectedTheme = ThemeName
+    return SetTheme()
 end
 
 local function PackColor(Color)
@@ -244,34 +746,102 @@ local function UnpackColor(Color)
 end
 
 local function LoadCfg(Config)
-	local Data = HttpService:JSONDecode(Config)
-	table.foreach(Data, function(a,b)
-		if OrionLib.Flags[a] then
-			spawn(function() 
-				if OrionLib.Flags[a].Type == "Colorpicker" then
-					OrionLib.Flags[a]:Set(UnpackColor(b))
-				else
-					OrionLib.Flags[a]:Set(b)
-				end    
-			end)
-		else
-			warn("Orion Library Config Loader - Could not find ", a ,b)
-		end
-	end)
+    local DecodeSuccess, Data = pcall(function()
+        return HttpService:JSONDecode(Config)
+    end)
+
+    if not DecodeSuccess or type(Data) ~= "table" then
+        warn("Orion Library - Could not decode the saved configuration: " .. tostring(Data))
+        return false
+    end
+
+    for FlagName, Value in pairs(Data) do
+        local Flag = OrionLib.Flags[FlagName]
+        if Flag and type(Flag.Set) == "function" then
+            task.spawn(function()
+                local ApplySuccess, ApplyError = pcall(function()
+                    if Flag.Type == "Colorpicker" then
+                        Flag:Set(UnpackColor(Value))
+                    else
+                        Flag:Set(Value)
+                    end
+                end)
+                if not ApplySuccess then
+                    warn("Orion Library - Could not apply config flag '" .. tostring(FlagName) .. "': " .. tostring(ApplyError))
+                end
+            end)
+        else
+            warn("Orion Library Config Loader - Could not find a compatible flag: " .. tostring(FlagName))
+        end
+    end
+    return true
 end
 
 local function SaveCfg(Name)
-	local Data = {}
-	for i,v in pairs(OrionLib.Flags) do
-		if v.Save then
-			if v.Type == "Colorpicker" then
-				Data[i] = PackColor(v.Value)
-			else
-				Data[i] = v.Value
-			end
-		end	
-	end
-	writefile(OrionLib.Folder .. "/" .. Name .. ".txt", tostring(HttpService:JSONEncode(Data)))
+    if not OrionLib.SaveCfg then
+        return false
+    end
+
+    if not ExecutorAPIs.writefile then
+        return false
+    end
+
+    local Folder = OrionLib.Folder
+    if type(Folder) ~= "string" or Folder == "" then
+        return false
+    end
+
+    local Data = {}
+    for FlagName, Flag in pairs(OrionLib.Flags) do
+        if Flag and Flag.Save then
+            if Flag.Type == "Colorpicker" and typeof(Flag.Value) == "Color3" then
+                Data[FlagName] = PackColor(Flag.Value)
+            else
+                Data[FlagName] = Flag.Value
+            end
+        end
+    end
+
+    local FolderStatus = SafeIsFolder(Folder)
+    local FolderReady = FolderStatus == true
+
+    if FolderStatus ~= true then
+        local MakeSuccess = false
+        if ExecutorAPIs.makefolder then
+            MakeSuccess = select(1, SafeMakeFolder(Folder))
+        end
+
+        local FolderStatusAfterCreate = SafeIsFolder(Folder)
+        if FolderStatusAfterCreate == true then
+            FolderReady = true
+        elseif FolderStatusAfterCreate == nil then
+            FolderReady = true
+        elseif MakeSuccess then
+            FolderReady = true
+        else
+            FolderReady = false
+        end
+    end
+
+    if not FolderReady then
+        return false
+    end
+
+    local EncodeSuccess, Encoded = pcall(function()
+        return HttpService:JSONEncode(Data)
+    end)
+    if not EncodeSuccess then
+        warn("Orion Library - Could not encode the configuration: " .. tostring(Encoded))
+        return false
+    end
+
+    local Path = Folder .. "/" .. tostring(Name or game.GameId) .. ".txt"
+    local WriteSuccess, WriteError = SafeWriteFile(Path, Encoded)
+    if not WriteSuccess then
+        warn("Orion Library - Could not save configuration: " .. tostring(WriteError))
+        return false
+    end
+    return true
 end
 
 local WhitelistedMouse = {Enum.UserInputType.MouseButton1, Enum.UserInputType.MouseButton2,Enum.UserInputType.MouseButton3}
@@ -370,24 +940,19 @@ CreateElement("ScrollFrame", function(Color, Width)
 end)
 
 CreateElement("Image", function(ImageID)
-	local ImageNew = Create("ImageLabel", {
-		Image = ImageID,
-		BackgroundTransparency = 1
-	})
-
-	if GetIcon(ImageID) ~= nil then
-		ImageNew.Image = GetIcon(ImageID)
-	end	
-
-	return ImageNew
+    local ImageNew = Create("ImageLabel", {
+        Image = ResolveImageSource(ImageID),
+        BackgroundTransparency = 1
+    })
+    return ImageNew
 end)
 
 CreateElement("ImageButton", function(ImageID)
-	local Image = Create("ImageButton", {
-		Image = ImageID,
-		BackgroundTransparency = 1
-	})
-	return Image
+    local Image = Create("ImageButton", {
+        Image = ResolveImageSource(ImageID),
+        BackgroundTransparency = 1
+    })
+    return Image
 end)
 
 CreateElement("Label", function(Text, TextSize, Transparency)
@@ -480,19 +1045,31 @@ function OrionLib:MakeNotification(NotificationConfig)
 end    
 
 function OrionLib:Init()
-	if OrionLib.SaveCfg then	
-		pcall(function()
-			if isfile(OrionLib.Folder .. "/" .. game.GameId .. ".txt") then
-				LoadCfg(readfile(OrionLib.Folder .. "/" .. game.GameId .. ".txt"))
-				OrionLib:MakeNotification({
-					Name = "Configuration",
-					Content = "Auto-loaded configuration for the game " .. game.GameId .. ".",
-					Time = 5
-				})
-			end
-		end)		
-	end	
-end	
+    if not OrionLib.SaveCfg then
+        return false
+    end
+
+    local Path = tostring(OrionLib.Folder or "") .. "/" .. tostring(game.GameId) .. ".txt"
+    if not SafeIsFile(Path) then
+        return false
+    end
+
+    local ReadSuccess, Config = SafeReadFile(Path)
+    if not ReadSuccess or type(Config) ~= "string" then
+        warn("Orion Library - Configuration exists, but could not be read: " .. tostring(Config))
+        return false
+    end
+
+    local Loaded = LoadCfg(Config)
+    if Loaded then
+        OrionLib:MakeNotification({
+            Name = "Configuration",
+            Content = "Auto-loaded configuration for the game " .. tostring(game.GameId) .. ".",
+            Time = 5
+        })
+    end
+    return Loaded
+end
 
 function OrionLib:MakeWindow(WindowConfig)
 	local FirstTab = true
@@ -517,11 +1094,22 @@ function OrionLib:MakeWindow(WindowConfig)
 	OrionLib.Folder = WindowConfig.ConfigFolder
 	OrionLib.SaveCfg = WindowConfig.SaveConfig
 
-	if WindowConfig.SaveConfig then
-		if not isfolder(WindowConfig.ConfigFolder) then
-			makefolder(WindowConfig.ConfigFolder)
-		end	
-	end
+    if WindowConfig.SaveConfig then
+        local FolderStatus = SafeIsFolder(WindowConfig.ConfigFolder)
+        local FolderReady = FolderStatus == true
+
+        if FolderStatus ~= true and ExecutorAPIs.makefolder then
+            local MakeSuccess = select(1, SafeMakeFolder(WindowConfig.ConfigFolder))
+            local FolderStatusAfterCreate = SafeIsFolder(WindowConfig.ConfigFolder)
+            FolderReady = FolderStatusAfterCreate == true or FolderStatusAfterCreate == nil or MakeSuccess
+        elseif FolderStatus == nil then
+            FolderReady = true
+        end
+
+        if not FolderReady or not ExecutorAPIs.writefile then
+            warn("Orion Library - SaveConfig is enabled, but file APIs or a usable config folder are unavailable. The UI will continue without saving.")
+        end
+    end
 
 	local TabHolder = AddThemeObject(SetChildren(SetProps(MakeElement("ScrollFrame", Color3.fromRGB(255, 255, 255), 4),
 		WindowConfig.SearchBar and {
@@ -624,7 +1212,7 @@ function OrionLib:MakeWindow(WindowConfig)
 		}),
 	}), "Second")
 
-		-- @ SearchBar (Zv-yz/github);
+    -- @ SearchBar (Zv-yz/github);
 	local Tabs = {};
 
 	if WindowConfig.SearchBar then
@@ -659,7 +1247,7 @@ function OrionLib:MakeWindow(WindowConfig)
 
 			for i,v in pairs(Tabs) do
 				if v:IsA('TextButton') then
-					if string.find(string.lower(i), Text) then
+					if string.find(string.lower(i), Text, 1, true) then
 						v.Visible = true
 					else
 						v.Visible = false
@@ -685,7 +1273,8 @@ function OrionLib:MakeWindow(WindowConfig)
 
 	local MainWindow = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 10), {
 		Parent = Orion,
-		Position = UDim2.new(0.5, -307, 0.5, -172),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
 		Size = UDim2.new(0, 615, 0, 344),
 		ClipsDescendants = true
 	}), {
@@ -718,6 +1307,44 @@ function OrionLib:MakeWindow(WindowConfig)
 		DragPoint,
 		WindowStuff
 	}), "Main")
+
+    local MainWindowScale = Instance.new("UIScale")
+    MainWindowScale.Name = "ResponsiveScale"
+    MainWindowScale.Parent = MainWindow
+
+    local function UpdateResponsiveScale()
+        local Camera = workspace.CurrentCamera
+        if not Camera then
+            return
+        end
+
+        local Viewport = Camera.ViewportSize
+        local ScaleX = (Viewport.X - 24) / 615
+        local ScaleY = (Viewport.Y - 24) / 344
+        MainWindowScale.Scale = math.clamp(math.min(1, ScaleX, ScaleY), 0.35, 1)
+    end
+
+    local ViewportConnection
+    local function BindCurrentCamera()
+        if ViewportConnection then
+            DisconnectConnection(ViewportConnection)
+            ViewportConnection = nil
+        end
+
+        local Camera = workspace.CurrentCamera
+        if Camera then
+            local SignalSuccess, ViewportSignal = pcall(function()
+                return Camera:GetPropertyChangedSignal("ViewportSize")
+            end)
+            if SignalSuccess and ViewportSignal then
+                ViewportConnection = AddConnection(ViewportSignal, UpdateResponsiveScale)
+            end
+        end
+        UpdateResponsiveScale()
+    end
+
+    AddConnection(workspace:GetPropertyChangedSignal("CurrentCamera"), BindCurrentCamera)
+    BindCurrentCamera()
 
 	if WindowConfig.ShowIcon then
 		WindowName.Position = UDim2.new(0, 50, 0, -24)
@@ -882,7 +1509,7 @@ function OrionLib:MakeWindow(WindowConfig)
 
 		local function GetElements(ItemParent)
 			local ElementFunction = {}
-			function ElementFunction:AddLabel(Text) -- fixed
+			function ElementFunction:AddLabel(Text)
     local ContentLabel = AddThemeObject(SetProps(MakeElement("Label", Text, 15), {
         Size = UDim2.new(1, -12, 1, 0),
         Position = UDim2.new(0, 12, 0, 0),
@@ -983,7 +1610,7 @@ end
 
 				AddConnection(Click.MouseButton1Up, function()
 					TweenService:Create(ButtonFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(OrionLib.Themes[OrionLib.SelectedTheme].Second.R * 255 + 3, OrionLib.Themes[OrionLib.SelectedTheme].Second.G * 255 + 3, OrionLib.Themes[OrionLib.SelectedTheme].Second.B * 255 + 3)}):Play()
-					spawn(function()
+					task.spawn(function()
 						ButtonConfig.Callback()
 					end)
 				end)
@@ -1067,8 +1694,8 @@ end
 
 				AddConnection(Click.MouseButton1Up, function()
 					TweenService:Create(ToggleFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(OrionLib.Themes[OrionLib.SelectedTheme].Second.R * 255 + 3, OrionLib.Themes[OrionLib.SelectedTheme].Second.G * 255 + 3, OrionLib.Themes[OrionLib.SelectedTheme].Second.B * 255 + 3)}):Play()
-					SaveCfg(game.GameId)
 					Toggle:Set(not Toggle.Value)
+					SaveCfg(game.GameId)
 				end)
 
 				AddConnection(Click.MouseButton1Down, function()
@@ -1083,10 +1710,17 @@ end
 			function ElementFunction:AddSlider(SliderConfig)
 				SliderConfig = SliderConfig or {}
 				SliderConfig.Name = SliderConfig.Name or "Slider"
-				SliderConfig.Min = SliderConfig.Min or 0
-				SliderConfig.Max = SliderConfig.Max or 100
-				SliderConfig.Increment = SliderConfig.Increment or 1
-				SliderConfig.Default = SliderConfig.Default or 50
+				SliderConfig.Min = type(SliderConfig.Min) == "number" and SliderConfig.Min or 0
+				SliderConfig.Max = type(SliderConfig.Max) == "number" and SliderConfig.Max or 100
+				SliderConfig.Increment = type(SliderConfig.Increment) == "number" and SliderConfig.Increment or 1
+				if SliderConfig.Increment <= 0 then
+					SliderConfig.Increment = 1
+				end
+				if SliderConfig.Max <= SliderConfig.Min then
+					SliderConfig.Max = SliderConfig.Min + SliderConfig.Increment
+				end
+				SliderConfig.Default = type(SliderConfig.Default) == "number" and SliderConfig.Default or 50
+				SliderConfig.Default = math.clamp(SliderConfig.Default, SliderConfig.Min, SliderConfig.Max)
 				SliderConfig.Callback = SliderConfig.Callback or function() end
 				SliderConfig.ValueName = SliderConfig.ValueName or ""
 				SliderConfig.Color = SliderConfig.Color or Color3.fromRGB(9, 149, 98)
@@ -1095,6 +1729,7 @@ end
 
 				local Slider = {Value = SliderConfig.Default, Save = SliderConfig.Save}
 				local Dragging = false
+                local ActiveSliderTouch = nil
 
 				local SliderDrag = SetChildren(SetProps(MakeElement("RoundFrame", SliderConfig.Color, 0, 5), {
 					Size = UDim2.new(0, 0, 1, 0),
@@ -1142,32 +1777,90 @@ end
 					SliderBar
 				}), "Second")
 
-				SliderBar.InputBegan:Connect(function(Input)
-					if Input.UserInputType == Enum.UserInputType.MouseButton1 then 
-						Dragging = true 
-					end 
-				end)
-				SliderBar.InputEnded:Connect(function(Input) 
-					if Input.UserInputType == Enum.UserInputType.MouseButton1 then 
-						Dragging = false 
-					end 
-				end)
+                local function SetSliderFromX(PositionX)
+                    local BarWidth = SliderBar.AbsoluteSize.X
+                    if BarWidth <= 0 then
+                        return
+                    end
+                    local SizeScale = math.clamp((PositionX - SliderBar.AbsolutePosition.X) / BarWidth, 0, 1)
+                    Slider:Set(SliderConfig.Min + ((SliderConfig.Max - SliderConfig.Min) * SizeScale))
+                end
 
-				UserInputService.InputChanged:Connect(function(Input)
-					if Dragging and Input.UserInputType == Enum.UserInputType.MouseMovement then 
-						local SizeScale = math.clamp((Input.Position.X - SliderBar.AbsolutePosition.X) / SliderBar.AbsoluteSize.X, 0, 1)
-						Slider:Set(SliderConfig.Min + ((SliderConfig.Max - SliderConfig.Min) * SizeScale)) 
-						SaveCfg(game.GameId)
-					end
-				end)
+                AddConnection(SliderBar.InputBegan, function(Input)
+                    if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        Dragging = true
+                        ActiveSliderTouch = nil
+                        SetSliderFromX(Input.Position.X)
+                    elseif Input.UserInputType == Enum.UserInputType.Touch then
+                        Dragging = true
+                        ActiveSliderTouch = Input
+                        SetSliderFromX(Input.Position.X)
+                    end
+                end)
 
-				function Slider:Set(Value)
-					self.Value = math.clamp(Round(Value, SliderConfig.Increment), SliderConfig.Min, SliderConfig.Max)
-					TweenService:Create(SliderDrag,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{Size = UDim2.fromScale((self.Value - SliderConfig.Min) / (SliderConfig.Max - SliderConfig.Min), 1)}):Play()
-					SliderBar.Value.Text = tostring(self.Value) .. " " .. SliderConfig.ValueName
-					SliderDrag.Value.Text = tostring(self.Value) .. " " .. SliderConfig.ValueName
-					SliderConfig.Callback(self.Value)
-				end      
+                AddConnection(UserInputService.InputChanged, function(Input)
+                    if not Dragging then
+                        return
+                    end
+                    if ActiveSliderTouch then
+                        if Input ~= ActiveSliderTouch then
+                            return
+                        end
+                        SetSliderFromX(Input.Position.X)
+                    elseif Input.UserInputType == Enum.UserInputType.MouseMovement then
+                        SetSliderFromX(Input.Position.X)
+                    end
+                end)
+
+                AddConnection(UserInputService.InputEnded, function(Input)
+                    local MouseReleased = ActiveSliderTouch == nil and Input.UserInputType == Enum.UserInputType.MouseButton1
+                    local TouchReleased = ActiveSliderTouch ~= nil and Input == ActiveSliderTouch
+                    if Dragging and (MouseReleased or TouchReleased) then
+                        Dragging = false
+                        ActiveSliderTouch = nil
+                        SaveCfg(game.GameId)
+                    end
+                end)
+
+                local SliderFillTween = nil
+
+                function Slider:Set(Value)
+                    if type(Value) ~= "number" then
+                        return self.Value
+                    end
+
+                    self.Value = math.clamp(Round(Value, SliderConfig.Increment), SliderConfig.Min, SliderConfig.Max)
+                    local Range = SliderConfig.Max - SliderConfig.Min
+                    local FillScale = Range ~= 0 and ((self.Value - SliderConfig.Min) / Range) or 0
+                    local TargetSize = UDim2.fromScale(math.clamp(FillScale, 0, 1), 1)
+
+                    if SliderFillTween then
+                        pcall(function()
+                            SliderFillTween:Cancel()
+                        end)
+                        SliderFillTween = nil
+                    end
+
+                    local TweenSuccess, NewTween = pcall(function()
+                        return TweenService:Create(
+                            SliderDrag,
+                            TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                            {Size = TargetSize}
+                        )
+                    end)
+
+                    if TweenSuccess and NewTween then
+                        SliderFillTween = NewTween
+                        NewTween:Play()
+                    else
+                        SliderDrag.Size = TargetSize
+                    end
+
+                    SliderBar.Value.Text = tostring(self.Value) .. " " .. SliderConfig.ValueName
+                    SliderDrag.Value.Text = tostring(self.Value) .. " " .. SliderConfig.ValueName
+                    SliderConfig.Callback(self.Value)
+                    return self.Value
+                end
 
 				Slider:Set(Slider.Value)
 				if SliderConfig.Flag then				
@@ -1184,7 +1877,7 @@ end
 				DropdownConfig.Flag = DropdownConfig.Flag or nil
 				DropdownConfig.Save = DropdownConfig.Save or false
 
-				local Dropdown = {Value = DropdownConfig.Default, Options = DropdownConfig.Options, Buttons = {}, Toggled = false, Type = "Dropdown", Save = DropdownConfig.Save}
+				local Dropdown = {Value = DropdownConfig.Default, Options = DropdownConfig.Options, Buttons = {}, ButtonConnections = {}, Toggled = false, Type = "Dropdown", Save = DropdownConfig.Save}
 				local MaxElements = 5
 
 				if not table.find(Dropdown.Options, Dropdown.Value) then
@@ -1268,26 +1961,131 @@ end
 							ClipsDescendants = true
 						}), "Divider")
 
-						AddConnection(OptionBtn.MouseButton1Click, function()
-							Dropdown:Set(Option)
-							SaveCfg(game.GameId)
-						end)
+                        local OptionConnection = AddConnection(OptionBtn.MouseButton1Click, function()
+                            Dropdown:Set(Option)
+                            SaveCfg(game.GameId)
+                        end)
 
-						Dropdown.Buttons[Option] = OptionBtn
+                        Dropdown.Buttons[Option] = OptionBtn
+                        Dropdown.ButtonConnections[OptionBtn] = OptionConnection
 					end
 				end	
 
-				function Dropdown:Refresh(Options, Delete)
-					if Delete then
-						for _,v in pairs(Dropdown.Buttons) do
-							v:Destroy()
-						end    
-						table.clear(Dropdown.Options)
-						table.clear(Dropdown.Buttons)
-					end
-					Dropdown.Options = Options
-					AddOptions(Dropdown.Options)
-				end  
+                function Dropdown:Refresh(Options, Delete)
+                    local IncomingOptions = {}
+                    local IncomingSeen = {}
+                    if type(Options) == "table" then
+                        for _, Option in ipairs(Options) do
+                            if Option ~= nil and not IncomingSeen[Option] then
+                                IncomingSeen[Option] = true
+                                table.insert(IncomingOptions, Option)
+                            end
+                        end
+                    end
+
+                    if Delete == true then
+                        for ButtonObject, Connection in pairs(Dropdown.ButtonConnections) do
+                            DisconnectConnection(Connection)
+                            Dropdown.ButtonConnections[ButtonObject] = nil
+                        end
+                        for _, ButtonObject in pairs(Dropdown.Buttons) do
+                            if ButtonObject then
+                                RemoveThemeObjectReferences(ButtonObject)
+                                ButtonObject:Destroy()
+                            end
+                        end
+                        table.clear(Dropdown.Buttons)
+                        table.clear(Dropdown.Options)
+                    end
+
+                    local ExistingOptions = {}
+                    for _, Option in ipairs(Dropdown.Options) do
+                        ExistingOptions[Option] = true
+                    end
+
+                    local OptionsToAdd = {}
+                    for _, Option in ipairs(IncomingOptions) do
+                        if not ExistingOptions[Option] then
+                            ExistingOptions[Option] = true
+                            table.insert(Dropdown.Options, Option)
+                            table.insert(OptionsToAdd, Option)
+                        end
+                    end
+
+                    AddOptions(OptionsToAdd)
+                    DropdownContainer.CanvasSize = UDim2.new(0, 0, 0, DropdownList.AbsoluteContentSize.Y)
+
+                    if not table.find(Dropdown.Options, Dropdown.Value) then
+                        Dropdown.Value = "..."
+                        DropdownFrame.F.Selected.Text = Dropdown.Value
+
+                        for _, ButtonObject in pairs(Dropdown.Buttons) do
+                            pcall(function()
+                                TweenService:Create(
+                                    ButtonObject,
+                                    TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                                    {BackgroundTransparency = 1}
+                                ):Play()
+                            end)
+
+                            local Title = ButtonObject:FindFirstChild("Title")
+                            if Title then
+                                pcall(function()
+                                    TweenService:Create(
+                                        Title,
+                                        TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                                        {TextTransparency = 0.4}
+                                    ):Play()
+                                end)
+                            end
+                        end
+                    else
+                        DropdownFrame.F.Selected.Text = Dropdown.Value
+
+                        for _, ButtonObject in pairs(Dropdown.Buttons) do
+                            pcall(function()
+                                TweenService:Create(
+                                    ButtonObject,
+                                    TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                                    {BackgroundTransparency = 1}
+                                ):Play()
+                            end)
+
+                            local Title = ButtonObject:FindFirstChild("Title")
+                            if Title then
+                                pcall(function()
+                                    TweenService:Create(
+                                        Title,
+                                        TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                                        {TextTransparency = 0.4}
+                                    ):Play()
+                                end)
+                            end
+                        end
+
+                        local SelectedButton = Dropdown.Buttons[Dropdown.Value]
+                        if SelectedButton then
+                            pcall(function()
+                                TweenService:Create(
+                                    SelectedButton,
+                                    TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                                    {BackgroundTransparency = 0}
+                                ):Play()
+                            end)
+
+                            local SelectedTitle = SelectedButton:FindFirstChild("Title")
+                            if SelectedTitle then
+                                pcall(function()
+                                    TweenService:Create(
+                                        SelectedTitle,
+                                        TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                                        {TextTransparency = 0}
+                                    ):Play()
+                                end)
+                            end
+                        end
+                    end
+                end
 
 				function Dropdown:Set(Value)
 					if not table.find(Dropdown.Options, Value) then
@@ -1307,9 +2105,12 @@ end
 						TweenService:Create(v,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{BackgroundTransparency = 1}):Play()
 						TweenService:Create(v.Title,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{TextTransparency = 0.4}):Play()
 					end	
-					TweenService:Create(Dropdown.Buttons[Value],TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{BackgroundTransparency = 0}):Play()
-					TweenService:Create(Dropdown.Buttons[Value].Title,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{TextTransparency = 0}):Play()
-					return DropdownConfig.Callback(Dropdown.Value)
+                    local SelectedButton = Dropdown.Buttons[Value]
+                    if SelectedButton then
+                        TweenService:Create(SelectedButton, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+                        TweenService:Create(SelectedButton.Title, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+                    end
+                    return DropdownConfig.Callback(Dropdown.Value)
 				end
 
 				AddConnection(Click.MouseButton1Click, function()
@@ -1323,7 +2124,7 @@ end
 					end
 				end)
 
-				Dropdown:Refresh(Dropdown.Options, false)
+				Dropdown:Refresh(Dropdown.Options, true)
 				Dropdown:Set(Dropdown.Value)
 				if DropdownConfig.Flag then				
 					OrionLib.Flags[DropdownConfig.Flag] = Dropdown
@@ -1338,7 +2139,7 @@ end
 				BindConfig.Flag = BindConfig.Flag or nil
 				BindConfig.Save = BindConfig.Save or false
 
-				local Bind = {Value, Binding = false, Type = "Bind", Save = BindConfig.Save}
+				local Bind = {Value = BindConfig.Default, Binding = false, Type = "Bind", Save = BindConfig.Save}
 				local Holding = false
 
 				local Click = SetProps(MakeElement("Button"), {
@@ -1439,12 +2240,16 @@ end
 					TweenService:Create(BindFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(OrionLib.Themes[OrionLib.SelectedTheme].Second.R * 255 + 6, OrionLib.Themes[OrionLib.SelectedTheme].Second.G * 255 + 6, OrionLib.Themes[OrionLib.SelectedTheme].Second.B * 255 + 6)}):Play()
 				end)
 
-				function Bind:Set(Key)
-					Bind.Binding = false
-					Bind.Value = Key or Bind.Value
-					Bind.Value = Bind.Value.Name or Bind.Value
-					BindBox.Value.Text = Bind.Value
-				end
+                function Bind:Set(Key)
+                    Bind.Binding = false
+                    local NewValue = Key or Bind.Value or BindConfig.Default
+                    if typeof(NewValue) == "EnumItem" then
+                        NewValue = NewValue.Name
+                    end
+                    Bind.Value = tostring(NewValue)
+                    BindBox.Value.Text = Bind.Value
+                    return Bind.Value
+                end
 
 				Bind:Set(BindConfig.Default)
 				if BindConfig.Flag then				
@@ -1539,12 +2344,16 @@ end
 				ColorpickerConfig.Flag = ColorpickerConfig.Flag or nil
 				ColorpickerConfig.Save = ColorpickerConfig.Save or false
 
-				local ColorH, ColorS, ColorV = 1, 1, 1
-				local Colorpicker = {Value = ColorpickerConfig.Default, Toggled = false, Type = "Colorpicker", Save = ColorpickerConfig.Save}
+                local ColorH, ColorS, ColorV = Color3.toHSV(ColorpickerConfig.Default)
+                local Colorpicker = {Value = ColorpickerConfig.Default, Toggled = false, Type = "Colorpicker", Save = ColorpickerConfig.Save}
+                local ColorInput, HueInput
+                local ActiveTouchInput
+                local ColorDragging, HueDragging = false, false
+                local ColorChangedDuringDrag = false
 
 				local ColorSelection = Create("ImageLabel", {
 					Size = UDim2.new(0, 18, 0, 18),
-					Position = UDim2.new(select(3, Color3.toHSV(Colorpicker.Value))),
+                    Position = UDim2.new(ColorS, 0, 1 - ColorV, 0),
 					ScaleType = Enum.ScaleType.Fit,
 					AnchorPoint = Vector2.new(0.5, 0.5),
 					BackgroundTransparency = 1,
@@ -1553,7 +2362,7 @@ end
 
 				local HueSelection = Create("ImageLabel", {
 					Size = UDim2.new(0, 18, 0, 18),
-					Position = UDim2.new(0.5, 0, 1 - select(1, Color3.toHSV(Colorpicker.Value))),
+                    Position = UDim2.new(0.5, 0, 1 - ColorH, 0),
 					ScaleType = Enum.ScaleType.Fit,
 					AnchorPoint = Vector2.new(0.5, 0.5),
 					BackgroundTransparency = 1,
@@ -1643,74 +2452,142 @@ end
 					ColorpickerFrame.F.Line.Visible = Colorpicker.Toggled
 				end)
 
-				local function UpdateColorPicker()
-					ColorpickerBox.BackgroundColor3 = Color3.fromHSV(ColorH, ColorS, ColorV)
-					Color.BackgroundColor3 = Color3.fromHSV(ColorH, 1, 1)
-					Colorpicker:Set(ColorpickerBox.BackgroundColor3)
-					ColorpickerConfig.Callback(ColorpickerBox.BackgroundColor3)
-					SaveCfg(game.GameId)
-				end
+                local function StopColorDrag()
+                    ColorDragging = false
+                    HueDragging = false
+                    ActiveTouchInput = nil
 
-				ColorH = 1 - (math.clamp(HueSelection.AbsolutePosition.Y - Hue.AbsolutePosition.Y, 0, Hue.AbsoluteSize.Y) / Hue.AbsoluteSize.Y)
-				ColorS = (math.clamp(ColorSelection.AbsolutePosition.X - Color.AbsolutePosition.X, 0, Color.AbsoluteSize.X) / Color.AbsoluteSize.X)
-				ColorV = 1 - (math.clamp(ColorSelection.AbsolutePosition.Y - Color.AbsolutePosition.Y, 0, Color.AbsoluteSize.Y) / Color.AbsoluteSize.Y)
+                    if ColorInput then
+                        DisconnectConnection(ColorInput)
+                        ColorInput = nil
+                    end
+                    if HueInput then
+                        DisconnectConnection(HueInput)
+                        HueInput = nil
+                    end
 
-				AddConnection(Color.InputBegan, function(input)
-					if input.UserInputType == Enum.UserInputType.MouseButton1 then
-						if ColorInput then
-							ColorInput:Disconnect()
-						end
-						ColorInput = AddConnection(RunService.RenderStepped, function()
-							local ColorX = (math.clamp(Mouse.X - Color.AbsolutePosition.X, 0, Color.AbsoluteSize.X) / Color.AbsoluteSize.X)
-							local ColorY = (math.clamp(Mouse.Y - Color.AbsolutePosition.Y, 0, Color.AbsoluteSize.Y) / Color.AbsoluteSize.Y)
-							ColorSelection.Position = UDim2.new(ColorX, 0, ColorY, 0)
-							ColorS = ColorX
-							ColorV = 1 - ColorY
-							UpdateColorPicker()
-						end)
-					end
-				end)
+                    if ColorChangedDuringDrag then
+                        ColorChangedDuringDrag = false
+                        SaveCfg(game.GameId)
+                    end
+                end
 
-				AddConnection(Color.InputEnded, function(input)
-					if input.UserInputType == Enum.UserInputType.MouseButton1 then
-						if ColorInput then
-							ColorInput:Disconnect()
-						end
-					end
-				end)
+                local function GetPointerPosition()
+                    if ActiveTouchInput then
+                        return ActiveTouchInput.Position.X, ActiveTouchInput.Position.Y
+                    end
 
-				AddConnection(Hue.InputBegan, function(input)
-					if input.UserInputType == Enum.UserInputType.MouseButton1 then
-						if HueInput then
-							HueInput:Disconnect()
-						end;
+                    if Mouse then
+                        local MouseSuccess, MouseX, MouseY = pcall(function()
+                            return Mouse.X, Mouse.Y
+                        end)
+                        if MouseSuccess and type(MouseX) == "number" and type(MouseY) == "number" then
+                            return MouseX, MouseY
+                        end
+                    end
 
-						HueInput = AddConnection(RunService.RenderStepped, function()
-							local HueY = (math.clamp(Mouse.Y - Hue.AbsolutePosition.Y, 0, Hue.AbsoluteSize.Y) / Hue.AbsoluteSize.Y)
+                    local LocationSuccess, MouseLocation = pcall(function()
+                        return UserInputService:GetMouseLocation()
+                    end)
+                    if LocationSuccess and MouseLocation then
+                        return MouseLocation.X, MouseLocation.Y
+                    end
+                    return 0, 0
+                end
 
-							HueSelection.Position = UDim2.new(0.5, 0, HueY, 0)
-							ColorH = 1 - HueY
+                local function UpdateColorPicker()
+                    local NewColor = Color3.fromHSV(ColorH, ColorS, ColorV)
+                    Color.BackgroundColor3 = Color3.fromHSV(ColorH, 1, 1)
 
-							UpdateColorPicker()
-						end)
-					end
-				end)
+                    if Colorpicker.Value ~= NewColor then
+                        Colorpicker:Set(NewColor)
+                        ColorChangedDuringDrag = true
+                    else
+                        ColorpickerBox.BackgroundColor3 = NewColor
+                    end
+                end
 
-				AddConnection(Hue.InputEnded, function(input)
-					if input.UserInputType == Enum.UserInputType.MouseButton1 then
-						if HueInput then
-							HueInput:Disconnect()
-						end
-					end
-				end)
 
-				function Colorpicker:Set(Value)
-					Colorpicker.Value = Value
-					ColorpickerBox.BackgroundColor3 = Colorpicker.Value
-					ColorpickerConfig.Callback(Colorpicker.Value)
-				end
+                AddConnection(Color.InputBegan, function(Input)
+                    if Input.UserInputType ~= Enum.UserInputType.MouseButton1 and Input.UserInputType ~= Enum.UserInputType.Touch then
+                        return
+                    end
+                    HueDragging = false
+                    ColorDragging = true
+                    ActiveTouchInput = Input.UserInputType == Enum.UserInputType.Touch and Input or nil
+                    if ColorInput then
+                        DisconnectConnection(ColorInput)
+                    end
+                    ColorInput = AddConnection(RunService.RenderStepped, function()
+                        if not ColorDragging or not OrionLib:IsRunning() then
+                            StopColorDrag()
+                            return
+                        end
+                        local PointerX, PointerY = GetPointerPosition()
+                        local Width, Height = Color.AbsoluteSize.X, Color.AbsoluteSize.Y
+                        if Width <= 0 or Height <= 0 then
+                            return
+                        end
+                        local ColorX = math.clamp((PointerX - Color.AbsolutePosition.X) / Width, 0, 1)
+                        local ColorY = math.clamp((PointerY - Color.AbsolutePosition.Y) / Height, 0, 1)
+                        ColorSelection.Position = UDim2.new(ColorX, 0, ColorY, 0)
+                        ColorS = ColorX
+                        ColorV = 1 - ColorY
+                        UpdateColorPicker()
+                    end)
+                end)
 
-				Colorpicker:Set(Colorpicker.Value)
+                AddConnection(Hue.InputBegan, function(Input)
+                    if Input.UserInputType ~= Enum.UserInputType.MouseButton1 and Input.UserInputType ~= Enum.UserInputType.Touch then
+                        return
+                    end
+                    ColorDragging = false
+                    HueDragging = true
+                    ActiveTouchInput = Input.UserInputType == Enum.UserInputType.Touch and Input or nil
+                    if HueInput then
+                        DisconnectConnection(HueInput)
+                    end
+                    HueInput = AddConnection(RunService.RenderStepped, function()
+                        if not HueDragging or not OrionLib:IsRunning() then
+                            StopColorDrag()
+                            return
+                        end
+                        local _, PointerY = GetPointerPosition()
+                        local Height = Hue.AbsoluteSize.Y
+                        if Height <= 0 then
+                            return
+                        end
+                        local HueY = math.clamp((PointerY - Hue.AbsolutePosition.Y) / Height, 0, 1)
+                        HueSelection.Position = UDim2.new(0.5, 0, HueY, 0)
+                        ColorH = 1 - HueY
+                        UpdateColorPicker()
+                    end)
+                end)
+
+                AddConnection(UserInputService.InputEnded, function(Input)
+                    local MouseReleased = ActiveTouchInput == nil and Input.UserInputType == Enum.UserInputType.MouseButton1
+                    local TouchReleased = ActiveTouchInput ~= nil and Input == ActiveTouchInput
+                    if MouseReleased or TouchReleased then
+                        StopColorDrag()
+                    end
+                end)
+
+                function Colorpicker:Set(Value)
+                    if typeof(Value) ~= "Color3" then
+                        return self.Value
+                    end
+
+                    Colorpicker.Value = Value
+                    ColorpickerBox.BackgroundColor3 = Value
+                    ColorH, ColorS, ColorV = Color3.toHSV(Value)
+                    ColorSelection.Position = UDim2.new(ColorS, 0, 1 - ColorV, 0)
+                    HueSelection.Position = UDim2.new(0.5, 0, 1 - ColorH, 0)
+                    Color.BackgroundColor3 = Color3.fromHSV(ColorH, 1, 1)
+                    ColorpickerConfig.Callback(Value)
+                    return Value
+                end
+
+                Colorpicker:Set(Colorpicker.Value)
 				if ColorpickerConfig.Flag then				
 					OrionLib.Flags[ColorpickerConfig.Flag] = Colorpicker
 				end
@@ -1803,7 +2680,15 @@ end
 end   
 
 function OrionLib:Destroy()
-	Orion:Destroy()
+    if LibraryDestroyed then
+        return
+    end
+    LibraryDestroyed = true
+    self:DisconnectConnections()
+    pcall(function()
+        Orion:Destroy()
+    end)
+    table.clear(self.ThemeObjects)
 end
 
 return OrionLib
