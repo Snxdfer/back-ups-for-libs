@@ -339,6 +339,106 @@ local function ResolveGuiParents()
 end
 
 local GuiParentCandidates = ResolveGuiParents()
+
+local function AddMarkers(Gui)
+    if not Gui then
+        return
+    end
+
+    local MarkerExists = false
+    pcall(function()
+        MarkerExists = Gui:FindFirstChild("isNyreliajs") ~= nil
+    end)
+
+    if not MarkerExists then
+        local Marker = Instance.new("BoolValue")
+        Marker.Name = "isNyreliajs"
+        Marker.Value = true
+        Marker.Parent = Gui
+    end
+
+    pcall(function()
+        Gui:SetAttribute("NyreliajsUI", true)
+    end)
+end
+
+local function IsManagedGui(Gui)
+    if not Gui or not Gui:IsA("ScreenGui") then
+        return false
+    end
+
+    local Marked = false
+    pcall(function()
+        Marked = Gui:FindFirstChild("isNyreliajs") ~= nil or Gui:GetAttribute("NyreliajsUI") == true
+    end)
+
+    return Marked or Gui.Name == "Orion"
+end
+
+local function ScanAndDestroy(Parent, DebrisService)
+    if not Parent then
+        return
+    end
+
+    local Success, Children = pcall(function()
+        return Parent:GetChildren()
+    end)
+    if not Success or type(Children) ~= "table" then
+        return
+    end
+
+    for _, Gui in ipairs(Children) do
+        if IsManagedGui(Gui) then
+            local ScheduledForRemoval = false
+            if DebrisService then
+                local DebrisSuccess = pcall(function()
+                    DebrisService:AddItem(Gui, 0)
+                end)
+                ScheduledForRemoval = DebrisSuccess
+            end
+            if not ScheduledForRemoval then
+                pcall(function()
+                    Gui:Destroy()
+                end)
+            end
+        end
+    end
+end
+
+local function RemoveOldGUIs()
+    local DebrisService
+    pcall(function()
+        DebrisService = GetService("Debris")
+    end)
+
+    local Parents = {}
+    local SeenParents = {}
+    local function AddParent(Parent)
+        if Parent and not SeenParents[Parent] then
+            SeenParents[Parent] = true
+            table.insert(Parents, Parent)
+        end
+    end
+
+    AddParent(CoreGui)
+    if CoreGui then
+        pcall(function()
+            AddParent(CoreGui:FindFirstChild("RobloxGui"))
+        end)
+    end
+    AddParent(PlayerGui)
+
+    for _, Candidate in ipairs(GuiParentCandidates) do
+        AddParent(Candidate.Parent)
+    end
+
+    for _, Parent in ipairs(Parents) do
+        ScanAndDestroy(Parent, DebrisService)
+    end
+end
+
+RemoveOldGUIs()
+
 local GuiParent = nil
 local GuiParentMode = nil
 local LibraryDestroyed = false
@@ -367,6 +467,8 @@ if not GuiParent then
     pcall(function() Orion:Destroy() end)
     error("Orion Library: Could not attach ScreenGui to gethui, CoreGui, or PlayerGui.")
 end
+
+AddMarkers(Orion)
 
 OrionLib.Compatibility.GuiParentMode = GuiParentMode
 OrionLib.Compatibility.IsMobile = IsOnMobile
