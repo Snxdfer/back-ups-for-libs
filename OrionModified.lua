@@ -1,8 +1,7 @@
 --[[
 Orion Library - made by: shlexware/jensonhirst
 Modified by: 00Fazee (elrandom#1311) | discord.gg/jB4yJgn3pE
-Last Modified: 12/10/2026 | dd/mm/yy
-Compatibility patch: stable GUI parent, guarded config I/O, tracked inputs, fixed slider/dropdown/color picker
+Last Modified: 19/10/2026 | dd/mm/yy
 ]]--
 
 local function missing(ExpectedType, Candidate, Fallback)
@@ -45,6 +44,8 @@ local ExecutorAPIs = {
     makefolder = FirstFunction(makefolder)
 }
 
+
+
 local Services = {}
 local function GetService(ServiceName)
     if Services[ServiceName] then
@@ -72,6 +73,8 @@ local TweenService = GetService("TweenService")
 local RunService = GetService("RunService")
 local Players = GetService("Players")
 local HttpService = GetService("HttpService")
+local GuiService
+pcall(function() GuiService = GetService("GuiService") end)
 local CoreGui
 pcall(function() CoreGui = GetService("CoreGui") end)
 local LocalPlayer = Players.LocalPlayer
@@ -96,6 +99,8 @@ local function ResolvePlayerGui()
 end
 
 local PlayerGui = ResolvePlayerGui()
+
+
 
 local function DetectMobile()
     local Success, Platform = pcall(function()
@@ -124,6 +129,8 @@ local function SafeIsFile(Path)
             return Exists == true
         end
     end
+
+
 
     local Success, Content = SafeReadFile(Path)
     return Success and Content ~= nil and Content ~= ""
@@ -178,7 +185,7 @@ local OrionLib = {
 			Text = Color3.fromRGB(240, 240, 240),
 			TextDark = Color3.fromRGB(150, 150, 150)
 		},
-		Darker = { -- not finished i guess
+		Darker = {
 			Main = Color3.fromRGB(25, 25, 25),
 			Second = Color3.fromRGB(32, 32, 32),
 			Stroke = Color3.fromRGB(60, 60, 60),
@@ -217,6 +224,8 @@ local function FetchText(Url)
             return Response
         end
     end
+
+
 
     if ExecutorAPIs.request then
         local Success, Response = pcall(ExecutorAPIs.request, {
@@ -257,6 +266,8 @@ local function GetIcon(IconName)
     end
     return nil
 end
+
+
 
 local function ResolveImageSource(ImageSource)
     if type(ImageSource) ~= "string" then
@@ -309,12 +320,15 @@ local function ResolveGuiParents()
         })
     end
 
+
+
     if ExecutorAPIs.gethui then
         local Success, Parent = pcall(ExecutorAPIs.gethui)
         if Success then
             AddCandidate(Parent, false, "gethui/get_hidden_gui")
         end
     end
+
 
     if CoreGui and ExecutorAPIs.protectGui then
         AddCandidate(CoreGui, true, "protected CoreGui")
@@ -371,6 +385,7 @@ function OrionLib:GetCompatibilityInfo()
     Info.CanCreateConfigFolder = ExecutorAPIs.makefolder ~= nil
     return Info
 end
+
 
 local ChildSuccess, ExistingChildren = pcall(function()
     return GuiParent:GetChildren()
@@ -447,6 +462,8 @@ task.spawn(function()
 end)
 
 local function LerpUDim2(Start, Goal, Alpha)
+
+
     return UDim2.new(
         Start.X.Scale + (Goal.X.Scale - Start.X.Scale) * Alpha,
         Start.X.Offset + (Goal.X.Offset - Start.X.Offset) * Alpha,
@@ -460,11 +477,110 @@ local function AddDraggingFunctionality(DragPoint, Main)
     local Settling = false
     local DragStartPosition = nil
     local MainStartPosition = nil
+    local StartAbsolutePosition = nil
     local TargetPosition = nil
     local ActiveTouchInput = nil
     local DragReleaseConnection = nil
     local SmoothDragConnection = nil
+    local BoundsViewportConnection = nil
+    local BoundsCameraConnection = nil
+    local BoundsSizeConnection = nil
     local Smoothness = 24
+
+
+
+    local function GetViewportAndInset()
+        local Camera = workspace.CurrentCamera
+        if not Camera then
+            return nil, 0
+        end
+
+        local Viewport
+        local CameraSuccess = pcall(function()
+            Viewport = Camera.ViewportSize
+        end)
+        if not CameraSuccess or not Viewport then
+            return nil, 0
+        end
+
+        local TopInsetY = 0
+        if GuiService then
+            pcall(function()
+                local TopLeftInset = GuiService:GetGuiInset()
+                if TopLeftInset then
+                    TopInsetY = TopLeftInset.Y
+                end
+            end)
+        end
+
+        return Viewport, TopInsetY
+    end
+
+    local function ClampAbsolutePosition(Position, Size)
+        local Viewport, TopInsetY = GetViewportAndInset()
+        if not Viewport then
+            return Position
+        end
+
+
+
+        local MaxX = math.max(0, Viewport.X - Size.X)
+        local MaxY = math.max(0, Viewport.Y - Size.Y - TopInsetY)
+
+        return Vector2.new(
+            math.clamp(Position.X, 0, MaxX),
+            math.clamp(Position.Y, 0, MaxY)
+        )
+    end
+
+    local function ApplyAbsoluteCorrection(Correction)
+        if not Main or not Main.Parent then
+            return
+        end
+
+        if math.abs(Correction.X) < 0.01 and math.abs(Correction.Y) < 0.01 then
+            return
+        end
+
+        local CurrentPosition = Main.Position
+        Main.Position = UDim2.new(
+            CurrentPosition.X.Scale,
+            CurrentPosition.X.Offset + Correction.X,
+            CurrentPosition.Y.Scale,
+            CurrentPosition.Y.Offset + Correction.Y
+        )
+
+
+
+        if MainStartPosition then
+            MainStartPosition = UDim2.new(
+                MainStartPosition.X.Scale,
+                MainStartPosition.X.Offset + Correction.X,
+                MainStartPosition.Y.Scale,
+                MainStartPosition.Y.Offset + Correction.Y
+            )
+        end
+        if StartAbsolutePosition then
+            StartAbsolutePosition = StartAbsolutePosition + Correction
+        end
+        if TargetPosition then
+            TargetPosition = UDim2.new(
+                TargetPosition.X.Scale,
+                TargetPosition.X.Offset + Correction.X,
+                TargetPosition.Y.Scale,
+                TargetPosition.Y.Offset + Correction.Y
+            )
+        end
+    end
+
+    local function KeepWindowOnScreen()
+        if not Main or not Main.Parent then
+            return
+        end
+        local CurrentAbsolutePosition = Main.AbsolutePosition
+        local ClampedPosition = ClampAbsolutePosition(CurrentAbsolutePosition, Main.AbsoluteSize)
+        ApplyAbsoluteCorrection(ClampedPosition - CurrentAbsolutePosition)
+    end
 
     local function StopDrag(Input)
         if not Dragging then
@@ -483,6 +599,7 @@ local function AddDraggingFunctionality(DragPoint, Main)
         ActiveTouchInput = nil
         DragStartPosition = nil
         MainStartPosition = nil
+        StartAbsolutePosition = nil
         Settling = TargetPosition ~= nil
 
         if DragReleaseConnection then
@@ -497,12 +614,18 @@ local function AddDraggingFunctionality(DragPoint, Main)
             DragReleaseConnection = nil
         end
 
+
+        KeepWindowOnScreen()
+
         Dragging = true
         Settling = false
         ActiveTouchInput = IsTouch and Input or nil
         DragStartPosition = Input.Position
         MainStartPosition = Main.Position
+        StartAbsolutePosition = Main.AbsolutePosition
         TargetPosition = Main.Position
+
+
 
         local ChangedSuccess, ChangedSignal = pcall(function()
             return Input.Changed
@@ -525,12 +648,13 @@ local function AddDraggingFunctionality(DragPoint, Main)
     end)
 
     AddConnection(UserInputService.InputChanged, function(Input)
-        if not Dragging or not DragStartPosition or not MainStartPosition then
+        if not Dragging or not DragStartPosition or not MainStartPosition or not StartAbsolutePosition then
             return
         end
 
         local CurrentPosition
         if ActiveTouchInput then
+
             if Input ~= ActiveTouchInput then
                 return
             end
@@ -541,16 +665,30 @@ local function AddDraggingFunctionality(DragPoint, Main)
             return
         end
 
-        local Delta = CurrentPosition - DragStartPosition
+
+
+
+        local Delta = Vector2.new(
+            CurrentPosition.X - DragStartPosition.X,
+            CurrentPosition.Y - DragStartPosition.Y
+        )
+        local ProposedAbsolutePosition = StartAbsolutePosition + Delta
+        local ClampedAbsolutePosition = ClampAbsolutePosition(ProposedAbsolutePosition, Main.AbsoluteSize)
+        local ClampedDelta = ClampedAbsolutePosition - StartAbsolutePosition
+
+
+
         TargetPosition = UDim2.new(
             MainStartPosition.X.Scale,
-            MainStartPosition.X.Offset + Delta.X,
+            MainStartPosition.X.Offset + ClampedDelta.X,
             MainStartPosition.Y.Scale,
-            MainStartPosition.Y.Offset + Delta.Y
+            MainStartPosition.Y.Offset + ClampedDelta.Y
         )
+
 
         if not SmoothDragConnection then
             Main.Position = TargetPosition
+            KeepWindowOnScreen()
         end
     end)
 
@@ -569,6 +707,8 @@ local function AddDraggingFunctionality(DragPoint, Main)
             TargetPosition = nil
             return
         end
+
+
 
         local SafeDelta = math.clamp(tonumber(DeltaTime) or (1 / 60), 0, 0.1)
         local Alpha = 1 - math.exp(-Smoothness * SafeDelta)
@@ -590,7 +730,32 @@ local function AddDraggingFunctionality(DragPoint, Main)
         end
     end
 
+
     SmoothDragConnection = AddConnection(RunService.RenderStepped, UpdateDrag)
+
+
+
+    local function BindBoundsToCurrentCamera()
+        if BoundsViewportConnection then
+            DisconnectConnection(BoundsViewportConnection)
+            BoundsViewportConnection = nil
+        end
+
+        local Camera = workspace.CurrentCamera
+        if Camera then
+            local SignalSuccess, ViewportSignal = pcall(function()
+                return Camera:GetPropertyChangedSignal("ViewportSize")
+            end)
+            if SignalSuccess and ViewportSignal then
+                BoundsViewportConnection = AddConnection(ViewportSignal, KeepWindowOnScreen)
+            end
+        end
+        KeepWindowOnScreen()
+    end
+
+    BoundsCameraConnection = AddConnection(workspace:GetPropertyChangedSignal("CurrentCamera"), BindBoundsToCurrentCamera)
+    BoundsSizeConnection = AddConnection(Main:GetPropertyChangedSignal("AbsoluteSize"), KeepWindowOnScreen)
+    BindBoundsToCurrentCamera()
 end
 
 local function Create(Name, Properties, Children)
@@ -659,19 +824,19 @@ end
 local function ReturnProperty(Object)
 	if Object:IsA("Frame") or Object:IsA("TextButton") then
 		return "BackgroundColor3"
-	end 
+	end
 	if Object:IsA("ScrollingFrame") then
 		return "ScrollBarImageColor3"
-	end 
+	end
 	if Object:IsA("UIStroke") then
 		return "Color"
-	end 
+	end
 	if Object:IsA("TextLabel") or Object:IsA("TextBox") then
 		return "TextColor3"
-	end   
+	end
 	if Object:IsA("ImageLabel") or Object:IsA("ImageButton") then
 		return "ImageColor3"
-	end   
+	end
 end
 
 local function AddThemeObject(Object, Type)
@@ -739,7 +904,7 @@ end
 
 local function PackColor(Color)
 	return {R = Color.R * 255, G = Color.G * 255, B = Color.B * 255}
-end    
+end
 
 local function UnpackColor(Color)
 	return Color3.fromRGB(Color.R, Color.G, Color.B)
@@ -815,6 +980,8 @@ local function SaveCfg(Name)
         if FolderStatusAfterCreate == true then
             FolderReady = true
         elseif FolderStatusAfterCreate == nil then
+
+
             FolderReady = true
         elseif MakeSuccess then
             FolderReady = true
@@ -997,7 +1164,7 @@ function OrionLib:MakeNotification(NotificationConfig)
 		})
 
 		local NotificationFrame = SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(25, 25, 25), 0, 10), {
-			Parent = NotificationParent, 
+			Parent = NotificationParent,
 			Size = UDim2.new(1, 0, 0, 0),
 			Position = UDim2.new(1, -55, 0, 0),
 			BackgroundTransparency = 0,
@@ -1042,7 +1209,7 @@ function OrionLib:MakeNotification(NotificationConfig)
 		wait(1.35)
 		NotificationFrame:Destroy()
 	end)
-end    
+end
 
 function OrionLib:Init()
     if not OrionLib.SaveCfg then
@@ -1103,6 +1270,7 @@ function OrionLib:MakeWindow(WindowConfig)
             local FolderStatusAfterCreate = SafeIsFolder(WindowConfig.ConfigFolder)
             FolderReady = FolderStatusAfterCreate == true or FolderStatusAfterCreate == nil or MakeSuccess
         elseif FolderStatus == nil then
+
             FolderReady = true
         end
 
@@ -1160,15 +1328,15 @@ function OrionLib:MakeWindow(WindowConfig)
 		AddThemeObject(SetProps(MakeElement("Frame"), {
 			Size = UDim2.new(1, 0, 0, 10),
 			Position = UDim2.new(0, 0, 0, 0)
-		}), "Second"), 
+		}), "Second"),
 		AddThemeObject(SetProps(MakeElement("Frame"), {
 			Size = UDim2.new(0, 10, 1, 0),
 			Position = UDim2.new(1, -10, 0, 0)
-		}), "Second"), 
+		}), "Second"),
 		AddThemeObject(SetProps(MakeElement("Frame"), {
 			Size = UDim2.new(0, 1, 1, 0),
 			Position = UDim2.new(1, -1, 0, 0)
-		}), "Stroke"), 
+		}), "Stroke"),
 		TabHolder,
 		SetChildren(SetProps(MakeElement("TFrame"), {
 			Size = UDim2.new(1, 0, 0, 50),
@@ -1176,7 +1344,7 @@ function OrionLib:MakeWindow(WindowConfig)
 		}), {
 			AddThemeObject(SetProps(MakeElement("Frame"), {
 				Size = UDim2.new(1, 0, 0, 1)
-			}), "Stroke"), 
+			}), "Stroke"),
 			AddThemeObject(SetChildren(SetProps(MakeElement("Frame"), {
 				AnchorPoint = Vector2.new(0, 0.5),
 				Size = UDim2.new(0, 32, 0, 32),
@@ -1212,7 +1380,7 @@ function OrionLib:MakeWindow(WindowConfig)
 		}),
 	}), "Second")
 
-    -- @ SearchBar (Zv-yz/github);
+
 	local Tabs = {};
 
 	if WindowConfig.SearchBar then
@@ -1278,13 +1446,13 @@ function OrionLib:MakeWindow(WindowConfig)
 		Size = UDim2.new(0, 615, 0, 344),
 		ClipsDescendants = true
 	}), {
-		--SetProps(MakeElement("Image", "rbxassetid://3523728077"), {
-		--	AnchorPoint = Vector2.new(0.5, 0.5),
-		--	Position = UDim2.new(0.5, 0, 0.5, 0),
-		--	Size = UDim2.new(1, 80, 1, 320),
-		--	ImageColor3 = Color3.fromRGB(33, 33, 33),
-		--	ImageTransparency = 0.7
-		--}),
+
+
+
+
+
+
+
 		SetChildren(SetProps(MakeElement("TFrame"), {
 			Size = UDim2.new(1, 0, 0, 50),
 			Name = "TopBar"
@@ -1299,14 +1467,15 @@ function OrionLib:MakeWindow(WindowConfig)
 				AddThemeObject(SetProps(MakeElement("Frame"), {
 					Size = UDim2.new(0, 1, 1, 0),
 					Position = UDim2.new(0.5, 0, 0, 0)
-				}), "Stroke"), 
+				}), "Stroke"),
 				CloseBtn,
 				MinimizeBtn
-			}), "Second"), 
+			}), "Second"),
 		}),
 		DragPoint,
 		WindowStuff
 	}), "Main")
+
 
     local MainWindowScale = Instance.new("UIScale")
     MainWindowScale.Name = "ResponsiveScale"
@@ -1353,7 +1522,7 @@ function OrionLib:MakeWindow(WindowConfig)
 			Position = UDim2.new(0, 20, 0, 15)
 		})
 		WindowIcon.Parent = MainWindow.TopBar
-	end	
+	end
 
 	AddDraggingFunctionality(DragPoint, MainWindow)
 
@@ -1390,9 +1559,9 @@ function OrionLib:MakeWindow(WindowConfig)
 
 			TweenService:Create(MainWindow, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(0, WindowName.TextBounds.X + 140, 0, 50)}):Play()
 			wait(0.1)
-			WindowStuff.Visible = false	
+			WindowStuff.Visible = false
 		end
-		Minimized = not Minimized    
+		Minimized = not Minimized
 	end)
 
 	local function LoadSequence()
@@ -1426,12 +1595,241 @@ function OrionLib:MakeWindow(WindowConfig)
 		MainWindow.Visible = true
 		LoadSequenceLogo:Destroy()
 		LoadSequenceText:Destroy()
-	end 
+	end
 
 	if WindowConfig.IntroEnabled then
 		LoadSequence()
-	end	
+	end
 
+
+
+
+    local TabAnimationStates = {}
+    local TAB_ENTRY_DURATION = 0.30
+    local TAB_ENTRY_STAGGER = 0.05
+
+    local function UpdateTabCanvas(Container)
+        if not Container or not Container.Parent then
+            return
+        end
+
+        local Layout = Container:FindFirstChildOfClass("UIListLayout")
+        if Layout then
+            Container.CanvasSize = UDim2.new(0, 0, 0, Layout.AbsoluteContentSize.Y + 30)
+        end
+    end
+
+    local function RestoreTabEntryAnimation(Container, State)
+        if not State then
+            return
+        end
+
+        State.Cancelled = true
+
+        for _, Tween in ipairs(State.Tweens or {}) do
+            pcall(function()
+                Tween:Cancel()
+            end)
+        end
+
+        for _, Entry in ipairs(State.Items or {}) do
+            if Entry.SizeConnection then
+                pcall(function()
+                    Entry.SizeConnection:Disconnect()
+                end)
+                Entry.SizeConnection = nil
+            end
+
+            local Object = Entry.Object
+            local Wrapper = Entry.Wrapper
+            if Object and Wrapper and Object.Parent == Wrapper then
+                pcall(function()
+                    Object.Position = Entry.OriginalPosition
+                    Object.Size = Entry.OriginalSize
+                    Object.AnchorPoint = Entry.OriginalAnchorPoint
+                    Object.Parent = Container
+                end)
+            elseif Object and Object.Parent == Container then
+                pcall(function()
+                    Object.Position = Entry.OriginalPosition
+                    Object.Size = Entry.OriginalSize
+                    Object.AnchorPoint = Entry.OriginalAnchorPoint
+                end)
+            end
+
+            if Wrapper then
+                pcall(function()
+                    Wrapper:Destroy()
+                end)
+                Entry.Wrapper = nil
+            end
+        end
+
+        if TabAnimationStates[Container] == State then
+            TabAnimationStates[Container] = nil
+        end
+
+        task.defer(function()
+            UpdateTabCanvas(Container)
+        end)
+    end
+
+    local function StopTabEntryAnimation(Container)
+        local State = TabAnimationStates[Container]
+        if State then
+            RestoreTabEntryAnimation(Container, State)
+        end
+    end
+
+    local function AnimateTabEntry(Container)
+        if not Container or not Container.Parent then
+            return
+        end
+
+        StopTabEntryAnimation(Container)
+
+        local State = {
+            Items = {},
+            Tweens = {},
+            Cancelled = false,
+            Completed = 0,
+            Pending = true
+        }
+        TabAnimationStates[Container] = State
+
+
+        task.defer(function()
+            if TabAnimationStates[Container] ~= State or State.Cancelled then
+                return
+            end
+            if not Container.Parent or not Container.Visible then
+                RestoreTabEntryAnimation(Container, State)
+                return
+            end
+
+            for _, Child in ipairs(Container:GetChildren()) do
+                if Child:IsA("GuiObject") and Child.Visible then
+                    table.insert(State.Items, {
+                        Object = Child,
+                        OriginalParent = Container,
+                        OriginalPosition = Child.Position,
+                        OriginalSize = Child.Size,
+                        OriginalAnchorPoint = Child.AnchorPoint,
+                        OriginalLayoutOrder = Child.LayoutOrder,
+                        SortY = Child.AbsolutePosition.Y,
+                        SortX = Child.AbsolutePosition.X,
+                        InitialWidth = Child.AbsoluteSize.X
+                    })
+                end
+            end
+
+            table.sort(State.Items, function(A, B)
+                if A.SortY == B.SortY then
+                    return A.SortX < B.SortX
+                end
+                return A.SortY < B.SortY
+            end)
+
+            if #State.Items == 0 then
+                if TabAnimationStates[Container] == State then
+                    TabAnimationStates[Container] = nil
+                end
+                UpdateTabCanvas(Container)
+                return
+            end
+
+            State.Pending = false
+            local EntryStagger = math.min(TAB_ENTRY_STAGGER, 0.65 / math.max(#State.Items - 1, 1))
+
+
+
+            for Index, Entry in ipairs(State.Items) do
+                local Object = Entry.Object
+                local Wrapper = Instance.new("Frame")
+                Wrapper.Name = "__OrionTabEntryClip"
+                Wrapper.BackgroundTransparency = 1
+                Wrapper.BorderSizePixel = 0
+                Wrapper.ClipsDescendants = true
+                Wrapper.Size = Entry.OriginalSize
+                Wrapper.LayoutOrder = Index
+                Wrapper.ZIndex = Object.ZIndex
+                Wrapper.Active = false
+                Wrapper.Selectable = false
+                Entry.Wrapper = Wrapper
+
+                Object.Parent = Wrapper
+                Object.AnchorPoint = Entry.OriginalAnchorPoint
+                Object.Size = UDim2.new(1, 0, 1, 0)
+                Object.Position = UDim2.fromOffset(math.max(Entry.InitialWidth, 46), 0)
+                Wrapper.Parent = Container
+
+
+                Entry.SizeConnection = Object:GetPropertyChangedSignal("Size"):Connect(function()
+                    if not State.Cancelled and Entry.Wrapper and Entry.Wrapper.Parent == Container then
+                        Entry.OriginalSize = Object.Size
+                        Entry.Wrapper.Size = Object.Size
+                    end
+                end)
+            end
+
+            local function FinishAnimation()
+                if TabAnimationStates[Container] ~= State then
+                    return
+                end
+                RestoreTabEntryAnimation(Container, State)
+            end
+
+            for Index, Entry in ipairs(State.Items) do
+                task.delay((Index - 1) * EntryStagger, function()
+                    if TabAnimationStates[Container] ~= State or State.Cancelled then
+                        return
+                    end
+                    if not Container.Parent or not Container.Visible then
+                        RestoreTabEntryAnimation(Container, State)
+                        return
+                    end
+
+                    local Object = Entry.Object
+                    local Wrapper = Entry.Wrapper
+                    if not Object or not Wrapper or Object.Parent ~= Wrapper or Wrapper.Parent ~= Container then
+                        State.Completed = State.Completed + 1
+                        if State.Completed >= #State.Items then
+                            FinishAnimation()
+                        end
+                        return
+                    end
+
+                    local Tween = TweenService:Create(
+                        Object,
+                        TweenInfo.new(TAB_ENTRY_DURATION, Enum.EasingStyle.Exponential, Enum.EasingDirection.InOut),
+                        {Position = UDim2.new(0, 0, 0, 0)}
+                    )
+                    table.insert(State.Tweens, Tween)
+
+                    local CompletionConnection
+                    CompletionConnection = Tween.Completed:Connect(function(PlaybackState)
+                        if CompletionConnection then
+                            CompletionConnection:Disconnect()
+                            CompletionConnection = nil
+                        end
+
+                        if PlaybackState ~= Enum.PlaybackState.Completed or TabAnimationStates[Container] ~= State then
+                            return
+                        end
+
+                        State.Completed = State.Completed + 1
+                        if State.Completed >= #State.Items then
+                            FinishAnimation()
+                        end
+                    end)
+
+                    Tween:Play()
+                end)
+            end
+        end)
+    end
+
+	local ActiveTabContainer = nil
 	local TabFunction = {}
 	function TabFunction:MakeTab(TabConfig)
 		TabConfig = TabConfig or {}
@@ -1462,7 +1860,7 @@ function OrionLib:MakeWindow(WindowConfig)
 		if GetIcon(TabConfig.Icon) ~= nil then
 			TabFrame.Ico.Image = GetIcon(TabConfig.Icon)
 		end
-		
+
 		AddItemTable(Tabs, TabConfig.Name, TabFrame)
 
 		local Container = AddThemeObject(SetChildren(SetProps(MakeElement("ScrollFrame", Color3.fromRGB(255, 255, 255), 5), {
@@ -1476,9 +1874,14 @@ function OrionLib:MakeWindow(WindowConfig)
 			MakeElement("Padding", 15, 10, 10, 15)
 		}), "Divider")
 
-		AddConnection(Container.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
-			Container.CanvasSize = UDim2.new(0, 0, 0, Container.UIListLayout.AbsoluteContentSize.Y + 30)
-		end)
+		local ContainerLayout = Container:FindFirstChildOfClass("UIListLayout")
+		if ContainerLayout then
+			AddConnection(ContainerLayout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
+				if not TabAnimationStates[Container] and Container.Parent then
+					Container.CanvasSize = UDim2.new(0, 0, 0, ContainerLayout.AbsoluteContentSize.Y + 30)
+				end
+			end)
+		end
 
 		if FirstTab then
 			FirstTab = false
@@ -1486,25 +1889,39 @@ function OrionLib:MakeWindow(WindowConfig)
 			TabFrame.Title.TextTransparency = 0
 			TabFrame.Title.Font = Enum.Font.GothamBlack
 			Container.Visible = true
-		end    
+			ActiveTabContainer = Container
+
+
+			task.delay(0.2, function()
+				if Container.Parent and Container.Visible then
+					AnimateTabEntry(Container)
+				end
+			end)
+		end
 
 		AddConnection(TabFrame.MouseButton1Click, function()
+			if ActiveTabContainer == Container then
+				return
+			end
+			ActiveTabContainer = Container
 			for _, Tab in next, TabHolder:GetChildren() do
 				if Tab:IsA("TextButton") then
 					Tab.Title.Font = Enum.Font.GothamSemibold
 					TweenService:Create(Tab.Ico, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {ImageTransparency = 0.4}):Play()
 					TweenService:Create(Tab.Title, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {TextTransparency = 0.4}):Play()
-				end    
+				end
 			end
 			for _, ItemContainer in next, MainWindow:GetChildren() do
 				if ItemContainer.Name == "ItemContainer" then
+					StopTabEntryAnimation(ItemContainer)
 					ItemContainer.Visible = false
-				end    
-			end  
+				end
+			end
 			TweenService:Create(TabFrame.Ico, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
 			TweenService:Create(TabFrame.Title, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
 			TabFrame.Title.Font = Enum.Font.GothamBlack
-			Container.Visible = true   
+			Container.Visible = true
+			AnimateTabEntry(Container)
 		end)
 
 		local function GetElements(ItemParent)
@@ -1569,7 +1986,7 @@ end
 					ParagraphFrame.Content.Text = ToChange
 				end
 				return ParagraphFunction
-			end    
+			end
 			function ElementFunction:AddButton(ButtonConfig)
 				ButtonConfig = ButtonConfig or {}
 				ButtonConfig.Name = ButtonConfig.Name or "Button"
@@ -1621,10 +2038,10 @@ end
 
 				function Button:Set(ButtonText)
 					ButtonFrame.Content.Text = ButtonText
-				end	
+				end
 
 				return Button
-			end    
+			end
 			function ElementFunction:AddToggle(ToggleConfig)
 				ToggleConfig = ToggleConfig or {}
 				ToggleConfig.Name = ToggleConfig.Name or "Toggle"
@@ -1680,7 +2097,7 @@ end
 					TweenService:Create(ToggleBox.Stroke, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Color = Toggle.Value and ToggleConfig.Color or OrionLib.Themes[OrionLib.SelectedTheme].Stroke}):Play()
 					TweenService:Create(ToggleBox.Ico, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {ImageTransparency = Toggle.Value and 0 or 1, Size = Toggle.Value and UDim2.new(0, 20, 0, 20) or UDim2.new(0, 8, 0, 8)}):Play()
 					ToggleConfig.Callback(Toggle.Value)
-				end    
+				end
 
 				Toggle:Set(Toggle.Value)
 
@@ -1704,9 +2121,9 @@ end
 
 				if ToggleConfig.Flag then
 					OrionLib.Flags[ToggleConfig.Flag] = Toggle
-				end	
+				end
 				return Toggle
-			end  
+			end
 			function ElementFunction:AddSlider(SliderConfig)
 				SliderConfig = SliderConfig or {}
 				SliderConfig.Name = SliderConfig.Name or "Slider"
@@ -1834,6 +2251,8 @@ end
                     local FillScale = Range ~= 0 and ((self.Value - SliderConfig.Min) / Range) or 0
                     local TargetSize = UDim2.fromScale(math.clamp(FillScale, 0, 1), 1)
 
+
+
                     if SliderFillTween then
                         pcall(function()
                             SliderFillTween:Cancel()
@@ -1853,6 +2272,7 @@ end
                         SliderFillTween = NewTween
                         NewTween:Play()
                     else
+
                         SliderDrag.Size = TargetSize
                     end
 
@@ -1863,11 +2283,11 @@ end
                 end
 
 				Slider:Set(Slider.Value)
-				if SliderConfig.Flag then				
+				if SliderConfig.Flag then
 					OrionLib.Flags[SliderConfig.Flag] = Slider
 				end
 				return Slider
-			end  
+			end
 			function ElementFunction:AddDropdown(DropdownConfig)
 				DropdownConfig = DropdownConfig or {}
 				DropdownConfig.Name = DropdownConfig.Name or "Dropdown"
@@ -1930,7 +2350,7 @@ end
 							Position = UDim2.new(0, 0, 1, -1),
 							Name = "Line",
 							Visible = false
-						}), "Stroke"), 
+						}), "Stroke"),
 						Click
 					}), {
 						Size = UDim2.new(1, 0, 0, 38),
@@ -1943,7 +2363,7 @@ end
 
 				AddConnection(DropdownList:GetPropertyChangedSignal("AbsoluteContentSize"), function()
 					DropdownContainer.CanvasSize = UDim2.new(0, 0, 0, DropdownList.AbsoluteContentSize.Y)
-				end)  
+				end)
 
 				local function AddOptions(Options)
 					for _, Option in pairs(Options) do
@@ -1969,9 +2389,10 @@ end
                         Dropdown.Buttons[Option] = OptionBtn
                         Dropdown.ButtonConnections[OptionBtn] = OptionConnection
 					end
-				end	
+				end
 
                 function Dropdown:Refresh(Options, Delete)
+
                     local IncomingOptions = {}
                     local IncomingSeen = {}
                     if type(Options) == "table" then
@@ -1982,6 +2403,8 @@ end
                             end
                         end
                     end
+
+
 
                     if Delete == true then
                         for ButtonObject, Connection in pairs(Dropdown.ButtonConnections) do
@@ -2042,6 +2465,8 @@ end
                     else
                         DropdownFrame.F.Selected.Text = Dropdown.Value
 
+
+
                         for _, ButtonObject in pairs(Dropdown.Buttons) do
                             pcall(function()
                                 TweenService:Create(
@@ -2094,7 +2519,7 @@ end
 						for _, v in pairs(Dropdown.Buttons) do
 							TweenService:Create(v,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{BackgroundTransparency = 1}):Play()
 							TweenService:Create(v.Title,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{TextTransparency = 0.4}):Play()
-						end	
+						end
 						return
 					end
 
@@ -2104,7 +2529,7 @@ end
 					for _, v in pairs(Dropdown.Buttons) do
 						TweenService:Create(v,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{BackgroundTransparency = 1}):Play()
 						TweenService:Create(v.Title,TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),{TextTransparency = 0.4}):Play()
-					end	
+					end
                     local SelectedButton = Dropdown.Buttons[Value]
                     if SelectedButton then
                         TweenService:Create(SelectedButton, TweenInfo.new(.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
@@ -2126,7 +2551,7 @@ end
 
 				Dropdown:Refresh(Dropdown.Options, true)
 				Dropdown:Set(Dropdown.Value)
-				if DropdownConfig.Flag then				
+				if DropdownConfig.Flag then
 					OrionLib.Flags[DropdownConfig.Flag] = Dropdown
 				end
 				return Dropdown
@@ -2176,7 +2601,7 @@ end
 				}), "Second")
 
 				AddConnection(BindBox.Value:GetPropertyChangedSignal("Text"), function()
-					--BindBox.Size = UDim2.new(0, BindBox.Value.TextBounds.X + 16, 0, 24)
+
 					TweenService:Create(BindBox, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(0, BindBox.Value.TextBounds.X + 16, 0, 24)}):Play()
 				end)
 
@@ -2252,11 +2677,11 @@ end
                 end
 
 				Bind:Set(BindConfig.Default)
-				if BindConfig.Flag then				
+				if BindConfig.Flag then
 					OrionLib.Flags[BindConfig.Flag] = Bind
 				end
 				return Bind
-			end  
+			end
 			function ElementFunction:AddTextbox(TextboxConfig)
 				TextboxConfig = TextboxConfig or {}
 				TextboxConfig.Name = TextboxConfig.Name or "Textbox"
@@ -2306,7 +2731,7 @@ end
 				}), "Second")
 
 				AddConnection(TextboxActual:GetPropertyChangedSignal("Text"), function()
-					--TextContainer.Size = UDim2.new(0, TextboxActual.TextBounds.X + 16, 0, 24)
+
 					TweenService:Create(TextContainer, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = UDim2.new(0, TextboxActual.TextBounds.X + 16, 0, 24)}):Play()
 				end)
 
@@ -2314,7 +2739,7 @@ end
 					TextboxConfig.Callback(TextboxActual.Text)
 					if TextboxConfig.TextDisappear then
 						TextboxActual.Text = ""
-					end	
+					end
 				end)
 
 				TextboxActual.Text = TextboxConfig.Default
@@ -2335,7 +2760,7 @@ end
 				AddConnection(Click.MouseButton1Down, function()
 					TweenService:Create(TextboxFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {BackgroundColor3 = Color3.fromRGB(OrionLib.Themes[OrionLib.SelectedTheme].Second.R * 255 + 6, OrionLib.Themes[OrionLib.SelectedTheme].Second.G * 255 + 6, OrionLib.Themes[OrionLib.SelectedTheme].Second.B * 255 + 6)}):Play()
 				end)
-			end 
+			end
 			function ElementFunction:AddColorpicker(ColorpickerConfig)
 				ColorpickerConfig = ColorpickerConfig or {}
 				ColorpickerConfig.Name = ColorpickerConfig.Name or "Colorpicker"
@@ -2434,7 +2859,7 @@ end
 							Position = UDim2.new(0, 0, 1, -1),
 							Name = "Line",
 							Visible = false
-						}), "Stroke"), 
+						}), "Stroke"),
 					}), {
 						Size = UDim2.new(1, 0, 0, 38),
 						ClipsDescendants = true,
@@ -2588,13 +3013,13 @@ end
                 end
 
                 Colorpicker:Set(Colorpicker.Value)
-				if ColorpickerConfig.Flag then				
+				if ColorpickerConfig.Flag then
 					OrionLib.Flags[ColorpickerConfig.Flag] = Colorpicker
 				end
 				return Colorpicker
-			end  
-			return ElementFunction   
-		end	
+			end
+			return ElementFunction
+		end
 
 		local ElementFunction = {}
 
@@ -2627,19 +3052,19 @@ end
 
 			local SectionFunction = {}
 			for i, v in next, GetElements(SectionFrame.Holder) do
-				SectionFunction[i] = v 
+				SectionFunction[i] = v
 			end
 			return SectionFunction
-		end	
+		end
 
 		for i, v in next, GetElements(Container) do
-			ElementFunction[i] = v 
+			ElementFunction[i] = v
 		end
 
 		if TabConfig.PremiumOnly then
 			for i, v in next, ElementFunction do
 				ElementFunction[i] = function() end
-			end    
+			end
 			Container:FindFirstChild("UIListLayout"):Destroy()
 			Container:FindFirstChild("UIPadding"):Destroy()
 			SetChildren(SetProps(MakeElement("TFrame"), {
@@ -2673,11 +3098,11 @@ end
 				}), "Text")
 			})
 		end
-		return ElementFunction   
+		return ElementFunction
 	end
-	
+
 	return TabFunction
-end   
+end
 
 function OrionLib:Destroy()
     if LibraryDestroyed then
